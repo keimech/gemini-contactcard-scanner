@@ -1,4 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="ocr_background">#FF2C2C2C</color>
+    <!-- Material 3 Dark Color Palette -->
+    <color name="m3_primary">#B9C3FF</color>
+    <color name="m3_on_primary">#002387</color>
+    <color name="m3_primary_container">#0A37A8</color>
+    <color name="m3_on_primary_container">#DDE1FF</color>
+
+    <color name="m3_secondary">#C4C5DD</color>
+    <color name="m3_on_secondary">#2D2F42</color>
+    <color name="m3_secondary_container">#434559</color>
+    <color name="m3_on_secondary_container">#E0E1F9</color>
+
+    <color name="m3_surface">#111318</color>
+    <color name="m3_on_surface">#E2E2E9</color>
+
+    <color name="ocr_background">#1D1F24</color>
 </resources>

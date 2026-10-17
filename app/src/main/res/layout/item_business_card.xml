@@ -4,21 +4,25 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="4dp"
-    app:cardElevation="2dp"
-    app:cardCornerRadius="8dp">
+    android:layout_marginHorizontal="8dp"
+    android:layout_marginVertical="6dp"
+    app:cardElevation="1dp"
+    app:strokeWidth="0dp"
+    app:cardCornerRadius="16dp"
+    app:cardBackgroundColor="?attr/colorSurfaceContainerHigh">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp">
+        android:padding="16dp"
+        android:gravity="center_vertical">
 
         <TextView
             android:id="@+id/avatarText"
             android:layout_width="48dp"
             android:layout_height="48dp"
-            android:layout_marginEnd="12dp"
+            android:layout_marginEnd="16dp"
             android:gravity="center"
             android:textSize="18sp"
             android:textColor="@android:color/white"
@@ -35,41 +39,45 @@
                 android:id="@+id/textName"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="16sp"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="?attr/colorOnSurface"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/textCompany"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="14sp"
-                android:textColor="?attr/colorPrimary" />
+                android:textAppearance="?attr/textAppearanceBodyMedium"
+                android:textColor="?attr/colorPrimary"
+                android:textStyle="bold"
+                android:layout_marginTop="2dp" />
 
             <TextView
                 android:id="@+id/textJob"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="12sp" />
+                android:textAppearance="?attr/textAppearanceBodySmall"
+                android:textColor="?attr/colorOnSurfaceVariant" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginTop="4dp">
+                android:layout_marginTop="6dp">
 
                 <TextView
                     android:id="@+id/textPhone"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:textSize="11sp" />
+                    android:textAppearance="?attr/textAppearanceLabelMedium" />
 
                 <TextView
                     android:id="@+id/textEmail"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:textSize="11sp"
+                    android:textAppearance="?attr/textAppearanceLabelMedium"
                     android:ellipsize="end"
                     android:maxLines="1" />
             </LinearLayout>
@@ -78,28 +86,28 @@
                 android:id="@+id/textDate"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="10sp"
+                android:textAppearance="?attr/textAppearanceLabelSmall"
                 android:layout_marginTop="2dp" />
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_marginTop="4dp">
+                android:layout_marginTop="6dp">
 
                 <TextView
                     android:id="@+id/badgeDuplicate"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/badge_duplicate"
-                    android:textSize="10sp"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
                     android:textColor="@android:color/white"
                     android:background="@color/badge_duplicate_bg"
-                    android:paddingStart="6dp"
-                    android:paddingEnd="6dp"
-                    android:paddingTop="2dp"
-                    android:paddingBottom="2dp"
-                    android:layout_marginEnd="4dp"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp"
+                    android:layout_marginEnd="6dp"
                     android:visibility="gone" />
 
                 <TextView
@@ -107,13 +115,13 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/badge_rescan"
-                    android:textSize="10sp"
+                    android:textAppearance="?attr/textAppearanceLabelSmall"
                     android:textColor="@android:color/white"
                     android:background="@color/badge_rescan_bg"
-                    android:paddingStart="6dp"
-                    android:paddingEnd="6dp"
-                    android:paddingTop="2dp"
-                    android:paddingBottom="2dp"
+                    android:paddingStart="8dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="3dp"
+                    android:paddingBottom="3dp"
                     android:visibility="gone" />
 
             </LinearLayout>
@@ -129,6 +137,7 @@
             android:contentDescription="@string/delete"
             android:padding="8dp"
             android:minWidth="48dp"
-            android:minHeight="48dp" />
+            android:minHeight="48dp"
+            app:tint="?attr/colorOnSurfaceVariant" />
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

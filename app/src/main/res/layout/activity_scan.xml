@@ -8,13 +8,15 @@
 
     <com.google.android.material.appbar.AppBarLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:background="@android:color/black"
+        app:elevation="0dp">
         <com.google.android.material.appbar.MaterialToolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            android:background="?attr/colorPrimary"
-            android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar" />
+            app:titleTextAppearance="?attr/textAppearanceTitleLarge"
+            app:titleTextColor="@android:color/white" />
     </com.google.android.material.appbar.AppBarLayout>
 
     <LinearLayout
@@ -27,10 +29,10 @@
             android:id="@+id/textScanInstruction"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:padding="10dp"
+            android:padding="12dp"
             android:text="@string/scan_front_instruction"
             android:textColor="@android:color/white"
-            android:textSize="13sp"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
             android:gravity="center"
             android:background="@android:color/black" />
 
@@ -41,7 +43,8 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             android:background="@color/scan_tip_bg"
-            android:padding="8dp"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp"
             android:gravity="center_vertical">
             <TextView
                 android:layout_width="0dp"
@@ -49,16 +52,16 @@
                 android:layout_weight="1"
                 android:text="@string/photoscan_tip"
                 android:textColor="@color/scan_tip_text"
-                android:textSize="11sp" />
+                android:textAppearance="?attr/textAppearanceBodySmall" />
             <Button
                 android:id="@+id/btnPhotoScan"
                 android:layout_width="wrap_content"
                 android:layout_height="48dp"
                 android:text="@string/open_photoscan"
-                android:textSize="11sp"
-                android:paddingStart="8dp"
-                android:paddingEnd="8dp"
-                style="@style/Widget.MaterialComponents.Button.OutlinedButton" />
+                android:textSize="12sp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                style="@style/Widget.Material3.Button.OutlinedButton" />
         </LinearLayout>
 
         <androidx.camera.view.PreviewView
@@ -76,9 +79,9 @@
                 android:id="@+id/textOcrResult"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="8dp"
+                android:padding="12dp"
                 android:textColor="@color/scan_ocr_text"
-                android:textSize="11sp"
+                android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textIsSelectable="true" />
         </ScrollView>
 
@@ -105,16 +108,18 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                android:text="@string/capture" />
+                android:layout_marginEnd="6dp"
+                android:text="@string/capture"
+                style="@style/Widget.Material3.Button" />
 
             <Button
                 android:id="@+id/btnGallery"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:text="@string/from_gallery" />
+                android:layout_marginStart="6dp"
+                android:text="@string/from_gallery"
+                style="@style/Widget.Material3.Button.TonalButton" />
         </LinearLayout>
 
         <!-- Secondary action row: appears after front is scanned -->
@@ -125,7 +130,8 @@
             android:orientation="horizontal"
             android:paddingStart="12dp"
             android:paddingEnd="12dp"
-            android:paddingBottom="8dp"
+            android:paddingBottom="12dp"
+            android:paddingTop="8dp"
             android:gravity="center"
             android:background="@color/scan_overlay_bg"
             android:visibility="gone">
@@ -135,16 +141,18 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginEnd="4dp"
-                android:text="@string/scan_back" />
+                android:layout_marginEnd="6dp"
+                android:text="@string/scan_back"
+                style="@style/Widget.Material3.Button.TonalButton" />
 
             <Button
                 android:id="@+id/btnSaveContact"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="4dp"
-                android:text="@string/save_contact" />
+                android:layout_marginStart="6dp"
+                android:text="@string/save_contact"
+                style="@style/Widget.Material3.Button" />
         </LinearLayout>
 
     </LinearLayout>
