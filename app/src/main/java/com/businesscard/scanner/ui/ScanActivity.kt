@@ -17,6 +17,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.camera.core.*
@@ -45,6 +46,9 @@ class ScanActivity : AppCompatActivity() {
     private var backText = ""
     private var isScanningBack = false
     private var eventTag = ""
+
+    private var preParseJob: Job? = null
+    private var cachedParsedContact: TextParser.ParsedContact? = null
 
     private val ocrHelper = OcrHelper()
     private val geminiParser = GeminiContactParser()
@@ -88,6 +92,7 @@ class ScanActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             geminiParser.downloadIfNeeded()
+            geminiParser.warmup()
         }
     }
 
@@ -256,6 +261,15 @@ class ScanActivity : AppCompatActivity() {
             Toast.makeText(this, getString(R.string.front_scanned), Toast.LENGTH_SHORT).show()
         }
         updateUI()
+        triggerPreParse()
+    }
+
+    private fun triggerPreParse() {
+        preParseJob?.cancel()
+        cachedParsedContact = null
+        preParseJob = lifecycleScope.launch {
+            cachedParsedContact = TextParser.parseSmart(frontText, backText, geminiParser)
+        }
     }
 
     // A retake before saving overwrites frontImagePath/backImagePath, otherwise
@@ -276,7 +290,11 @@ class ScanActivity : AppCompatActivity() {
         setBusy(true)
         lifecycleScope.launch {
             try {
-                val parsed = TextParser.parseSmart(frontText, backText, geminiParser)
+                var parsed = cachedParsedContact
+                if (parsed == null) {
+                    preParseJob?.join()
+                    parsed = cachedParsedContact ?: TextParser.parseSmart(frontText, backText, geminiParser)
+                }
                 val initialTags = eventTag.ifBlank { "" }
                 val card = BusinessCard(
                     personName = parsed.personName,

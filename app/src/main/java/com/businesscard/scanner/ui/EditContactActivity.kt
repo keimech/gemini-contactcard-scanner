@@ -49,6 +49,8 @@ class EditContactActivity : AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.title = getString(R.string.edit_contact)
 
+        lifecycleScope.launch { geminiParser.warmup() }
+
         val cardId = intent.getLongExtra(EXTRA_CARD_ID, -1L)
         if (cardId == -1L) { finish(); return }
 
