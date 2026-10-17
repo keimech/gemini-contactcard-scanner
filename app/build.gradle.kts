@@ -106,6 +106,7 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
+        freeCompilerArgs += listOf("-Xskip-metadata-version-check")
     }
 }
 
@@ -124,10 +125,13 @@ dependencies {
     implementation(libs.mlkit.text)
     implementation(libs.mlkit.text.chinese)
     implementation(libs.mlkit.text.japanese)
+    implementation(libs.mlkit.genai.prompt)
+    ksp(libs.mlkit.genai.schema.compiler)
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
     implementation(libs.glide)
+    implementation(libs.coroutines.core)
     implementation(libs.coroutines.android)
     implementation(libs.androidx.viewpager2)
     implementation(libs.zxing.core)

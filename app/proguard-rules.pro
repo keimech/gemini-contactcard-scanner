@@ -20,6 +20,11 @@
 # Keep BuildConfig fields
 -keep class com.businesscard.scanner.BuildConfig { *; }
 
+# ML Kit GenAI Prompt API & Structured Output
+-keep class com.google.mlkit.genai.** { *; }
+-keep @com.google.mlkit.genai.schema.annotations.Generable class * { *; }
+-keep class com.businesscard.scanner.ocr.GenerableParsedContact { *; }
+
 # Standard Android rules
 -keepattributes *Annotation*
 -keepattributes LineNumberTable

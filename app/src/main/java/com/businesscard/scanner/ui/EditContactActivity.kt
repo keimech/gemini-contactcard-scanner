@@ -17,6 +17,7 @@ import com.businesscard.scanner.data.BusinessCard
 import com.businesscard.scanner.databinding.ActivityEditContactBinding
 import com.businesscard.scanner.ocr.OcrHelper
 import com.businesscard.scanner.ocr.TextParser
+import com.businesscard.scanner.ocr.GeminiContactParser
 import kotlinx.coroutines.launch
 
 class EditContactActivity : AppCompatActivity() {
@@ -24,6 +25,7 @@ class EditContactActivity : AppCompatActivity() {
     private lateinit var binding: ActivityEditContactBinding
     private val viewModel: BusinessCardViewModel by viewModels()
     private val ocrHelper = OcrHelper()
+    private val geminiParser = GeminiContactParser()
 
     private val speechLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -82,7 +84,7 @@ class EditContactActivity : AppCompatActivity() {
                             return@launch
                         }
 
-                        val parsed = TextParser.parse(frontText, backText)
+                        val parsed = TextParser.parseSmart(frontText, backText, geminiParser)
                         // Overwrite parsed fields; leave notes untouched (user-written)
                         if (parsed.personName.isNotBlank())  binding.editPersonName.setText(parsed.personName)
                         if (parsed.companyName.isNotBlank()) binding.editCompanyName.setText(parsed.companyName)
@@ -174,6 +176,7 @@ class EditContactActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         ocrHelper.close()
+        geminiParser.close()
     }
 
     private fun startSpeechRecognition() {

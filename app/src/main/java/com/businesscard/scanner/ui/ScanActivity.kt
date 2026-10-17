@@ -28,6 +28,7 @@ import com.businesscard.scanner.data.BusinessCard
 import com.businesscard.scanner.databinding.ActivityScanBinding
 import com.businesscard.scanner.ocr.TextParser
 import com.businesscard.scanner.ocr.OcrHelper
+import com.businesscard.scanner.ocr.GeminiContactParser
 import com.google.mlkit.vision.common.InputImage
 import java.io.File
 import java.io.IOException
@@ -46,6 +47,7 @@ class ScanActivity : AppCompatActivity() {
     private var eventTag = ""
 
     private val ocrHelper = OcrHelper()
+    private val geminiParser = GeminiContactParser()
 
     private val requestPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -83,6 +85,10 @@ class ScanActivity : AppCompatActivity() {
         binding.btnSaveContact.setOnClickListener { saveContact() }
         binding.btnPhotoScan.setOnClickListener { openPhotoScan() }
         updateUI()
+
+        lifecycleScope.launch {
+            geminiParser.downloadIfNeeded()
+        }
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
@@ -267,46 +273,51 @@ class ScanActivity : AppCompatActivity() {
     }
 
     private fun saveContact() {
-        val parsed = TextParser.parse(frontText, backText)
-        val initialTags = eventTag.ifBlank { "" }
-        val card = BusinessCard(
-            personName = parsed.personName,
-            companyName = parsed.companyName,
-            jobTitle = parsed.jobTitle,
-            phone = parsed.phone,
-            mobile = parsed.mobile,
-            email = parsed.email,
-            website = parsed.website,
-            address = parsed.address,
-            rawTextFront = frontText,
-            rawTextBack = backText,
-            frontImagePath = frontImagePath,
-            backImagePath = backImagePath,
-            tags = initialTags
-        )
+        setBusy(true)
         lifecycleScope.launch {
-            val duplicate = viewModel.findDuplicate(parsed.personName, parsed.email)
-            if (duplicate != null && (parsed.personName.isNotBlank() || parsed.email.isNotBlank())) {
-                AlertDialog.Builder(this@ScanActivity)
-                    .setTitle(R.string.possible_duplicate_title)
-                    .setMessage(getString(R.string.possible_duplicate_message, duplicate.personName))
-                    .setPositiveButton(R.string.save_anyway) { _, _ ->
-                        viewModel.insert(card) {
-                            runOnUiThread {
-                                Toast.makeText(this@ScanActivity, getString(R.string.contact_saved), Toast.LENGTH_SHORT).show()
-                                finish()
+            try {
+                val parsed = TextParser.parseSmart(frontText, backText, geminiParser)
+                val initialTags = eventTag.ifBlank { "" }
+                val card = BusinessCard(
+                    personName = parsed.personName,
+                    companyName = parsed.companyName,
+                    jobTitle = parsed.jobTitle,
+                    phone = parsed.phone,
+                    mobile = parsed.mobile,
+                    email = parsed.email,
+                    website = parsed.website,
+                    address = parsed.address,
+                    rawTextFront = frontText,
+                    rawTextBack = backText,
+                    frontImagePath = frontImagePath,
+                    backImagePath = backImagePath,
+                    tags = initialTags
+                )
+                val duplicate = viewModel.findDuplicate(parsed.personName, parsed.email)
+                if (duplicate != null && (parsed.personName.isNotBlank() || parsed.email.isNotBlank())) {
+                    AlertDialog.Builder(this@ScanActivity)
+                        .setTitle(R.string.possible_duplicate_title)
+                        .setMessage(getString(R.string.possible_duplicate_message, duplicate.personName))
+                        .setPositiveButton(R.string.save_anyway) { _, _ ->
+                            viewModel.insert(card) {
+                                runOnUiThread {
+                                    Toast.makeText(this@ScanActivity, getString(R.string.contact_saved), Toast.LENGTH_SHORT).show()
+                                    finish()
+                                }
                             }
                         }
-                    }
-                    .setNegativeButton(R.string.cancel, null)
-                    .show()
-            } else {
-                viewModel.insert(card) {
-                    runOnUiThread {
-                        Toast.makeText(this@ScanActivity, getString(R.string.contact_saved), Toast.LENGTH_SHORT).show()
-                        finish()
+                        .setNegativeButton(R.string.cancel, null)
+                        .show()
+                } else {
+                    viewModel.insert(card) {
+                        runOnUiThread {
+                            Toast.makeText(this@ScanActivity, getString(R.string.contact_saved), Toast.LENGTH_SHORT).show()
+                            finish()
+                        }
                     }
                 }
+            } finally {
+                setBusy(false)
             }
         }
     }
@@ -331,6 +342,7 @@ class ScanActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         ocrHelper.close()
+        geminiParser.close()
     }
 
     override fun onSupportNavigateUp(): Boolean {

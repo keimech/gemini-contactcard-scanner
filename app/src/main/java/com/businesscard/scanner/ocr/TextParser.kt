@@ -99,6 +99,34 @@ object TextParser {
         return sb.toString()
     }
 
+    /**
+     * Smart parsing method that attempts Gemini Nano AI extraction first, and
+     * falls back to rule-based [parse] if Gemini Nano is unavailable or fails.
+     */
+    suspend fun parseSmart(
+        frontText: String,
+        backText: String = "",
+        geminiParser: GeminiContactParser? = null
+    ): ParsedContact {
+        if (geminiParser != null) {
+            val aiResult = geminiParser.parseWithGemini(frontText, backText)
+            if (aiResult != null && (aiResult.personName.isNotBlank() || aiResult.companyName.isNotBlank())) {
+                val fallback = parse(frontText, backText)
+                return ParsedContact(
+                    personName = aiResult.personName.ifBlank { fallback.personName },
+                    companyName = aiResult.companyName.ifBlank { fallback.companyName },
+                    jobTitle = aiResult.jobTitle.ifBlank { fallback.jobTitle },
+                    phone = aiResult.phone.ifBlank { fallback.phone },
+                    mobile = aiResult.mobile.ifBlank { fallback.mobile },
+                    email = aiResult.email.ifBlank { fallback.email },
+                    website = aiResult.website.ifBlank { fallback.website },
+                    address = aiResult.address.ifBlank { fallback.address }
+                )
+            }
+        }
+        return parse(frontText, backText)
+    }
+
     fun parse(frontText: String, backText: String = ""): ParsedContact {
         val allText = "$frontText\n$backText"
         val lines = allText.lines().map { it.trim() }.filter { it.isNotBlank() }

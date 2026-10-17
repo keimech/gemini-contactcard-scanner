@@ -6,12 +6,14 @@ appcompat = "1.7.0"
 material = "1.12.0"
 constraintlayout = "2.1.4"
 lifecycle = "2.8.3"
-camerax = "1.3.4"
+camerax = "1.4.2"
 mlkit = "16.0.1"
 mlkit-cjk = "16.0.0"
+mlkit-genai-prompt = "1.0.0-beta4"
+mlkit-genai-schema-compiler = "1.0.0-alpha1"
 room = "2.6.1"
 glide = "4.16.0"
-coroutines = "1.8.1"
+coroutines = "1.9.0"
 activity = "1.9.1"
 viewpager2 = "1.1.0"
 zxing = "3.5.3"
@@ -33,10 +35,13 @@ camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = 
 mlkit-text = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkit" }
 mlkit-text-chinese = { group = "com.google.mlkit", name = "text-recognition-chinese", version.ref = "mlkit-cjk" }
 mlkit-text-japanese = { group = "com.google.mlkit", name = "text-recognition-japanese", version.ref = "mlkit-cjk" }
+mlkit-genai-prompt = { group = "com.google.mlkit", name = "genai-prompt", version.ref = "mlkit-genai-prompt" }
+mlkit-genai-schema-compiler = { group = "com.google.mlkit", name = "genai-schema-compiler", version.ref = "mlkit-genai-schema-compiler" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "room" }
 room-compiler = { group = "androidx.room", name = "room-compiler", version.ref = "room" }
 glide = { group = "com.github.bumptech.glide", name = "glide", version.ref = "glide" }
+coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
 androidx-viewpager2 = { group = "androidx.viewpager2", name = "viewpager2", version.ref = "viewpager2" }
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
