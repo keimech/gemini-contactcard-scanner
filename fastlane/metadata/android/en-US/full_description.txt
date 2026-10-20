@@ -1,10 +1,11 @@
-Business Card Scanner lets you capture, organise, and search business cards entirely on your device. No account, no cloud, no data ever leaves your phone.
+Gemini Contact Card Scanner lets you capture, organise, and search business cards entirely on your device using on-device ML Kit OCR and Gemini Nano AI. No account, no cloud, no data ever leaves your phone.
 
-Point your camera at a card, tap Capture, and the app extracts the name, company, job title, phone numbers, email, website, and address using on-device ML Kit OCR. A built-in parser debug panel shows exactly how each line was classified so you can spot and correct mistakes.
+Point your camera at a card, tap Capture, and the app extracts the name, company, job title, phone numbers, email, website, and address using on-device ML Kit OCR and Gemini Nano structured AI extraction. A built-in parser debug panel shows exactly how each line was classified so you can spot and correct mistakes.
 
 FEATURES
 
 • Scan front and back of cards with your camera or import from the gallery
+• On-device GenAI (Gemini Nano) — structured contact extraction powered by ML Kit GenAI Prompt API
 • On-device OCR — works offline, supports English, Chinese (Simplified & Traditional), and Japanese
 • Search and filter contacts by name, company, or tag
 • Find and merge duplicate contacts
@@ -20,4 +21,4 @@ FEATURES
 
 PRIVACY
 
-The app has no INTERNET permission and cannot make network connections. All OCR and ML processing uses bundled on-device models. Your contacts are stored only in a local database. Backups go directly to your chosen app — nothing is uploaded automatically.
+The app has no INTERNET permission and cannot make network connections. All OCR, ML, and Gemini Nano AI processing uses bundled on-device models. Your contacts are stored only in a local database. Backups go directly to your chosen app — nothing is uploaded automatically.

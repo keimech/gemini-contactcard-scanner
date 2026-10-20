@@ -1,14 +1,15 @@
-# Business Card Scanner
+# Gemini Contact Card Scanner
 
-[![Build](https://github.com/merloko/business-card-scanner/actions/workflows/build.yml/badge.svg)](https://github.com/merloko/business-card-scanner/actions/workflows/build.yml)
+[![Build](https://github.com/keimech/gemini-contactcard-scanner/actions/workflows/build.yml/badge.svg)](https://github.com/keimech/gemini-contactcard-scanner/actions/workflows/build.yml)
 
-An offline-first Android app for scanning, storing, and managing business cards — no account, no cloud, no data ever leaves your device.
+An offline-first Android app for scanning, storing, and managing business cards using on-device OCR and Gemini Nano AI — no account, no cloud, no data ever leaves your device.
 
 ---
 
 ## Features
 
 - **Scan cards** — capture the front and back with your camera or import from the gallery
+- **On-device GenAI (Gemini Nano)** — structured contact information extraction (Name, Company, Job Title, Phone, Mobile, Email, Website, Address) powered by ML Kit GenAI Prompt API running locally on supported devices
 - **On-device OCR** — powered by ML Kit with bundled models for English, Chinese (Simplified & Traditional), and Japanese; works fully offline
 - **Parser debug panel** — see exactly how each OCR line was classified (name, company, phone, email, etc.) and copy the raw text to correct mistakes
 - **Search & filter** — find contacts by name, company, or tag; filter by tag chips in the toolbar
@@ -28,7 +29,7 @@ An offline-first Android app for scanning, storing, and managing business cards 
 ## Privacy
 
 - **No INTERNET permission** — the app cannot make network requests
-- All OCR and ML processing happens on-device using bundled models
+- All OCR, ML, and Gemini Nano AI processing happens 100% on-device
 - Contact data is stored only in a local SQLite database in the app's private storage
 - Camera, microphone, and NFC are used only for on-device features, never to transmit data
 - Backups and exports are always user-initiated and go directly to your chosen app (Files, Drive, email, etc.)
@@ -40,6 +41,7 @@ An offline-first Android app for scanning, storing, and managing business cards 
 
 - Android 10+ (API 29)
 - Camera required for scanning
+- On-device AI features require device support for ML Kit GenAI Prompt API (e.g. Pixel 8/9 series or compatible Android devices)
 - NFC optional — for writing your digital card to NFC tags
 - Microphone optional — for the meeting recorder
 
@@ -50,8 +52,8 @@ An offline-first Android app for scanning, storing, and managing business cards 
 **Prerequisites:** JDK 17, Android SDK (API 34 platform + build-tools)
 
 ```bash
-git clone git@github.com:merloko/business-card-scanner.git
-cd business-card-scanner
+git clone https://github.com/keimech/gemini-contactcard-scanner.git
+cd gemini-contactcard-scanner
 ./gradlew assembleDebug          # debug APK → app/build/outputs/apk/debug/
 ./gradlew testDebugUnitTest      # unit tests
 ```
@@ -69,15 +71,16 @@ export KEY_PASSWORD=<your-key-password>
 
 ## Libraries
 
-| Library | Licence |
-|---------|---------|
-| [CameraX](https://developer.android.com/training/camerax) | Apache 2.0 |
-| [ML Kit Text Recognition](https://developers.google.com/ml-kit/vision/text-recognition) | Google APIs Terms |
-| [Room](https://developer.android.com/jetpack/androidx/releases/room) | Apache 2.0 |
-| [Glide](https://github.com/bumptech/glide) | Apache 2.0 |
-| [ZXing](https://github.com/zxing/zxing) | Apache 2.0 |
-| [Material Components for Android](https://github.com/material-components/material-components-android) | Apache 2.0 |
-| [Kotlin Coroutines](https://github.com/Kotlin/kotlinx.coroutines) | Apache 2.0 |
+| Library | Version | Licence |
+|---------|---------|---------|
+| [ML Kit GenAI Prompt API (Gemini Nano)](https://developers.google.com/ml-kit) | `1.0.0-beta4` | Google APIs Terms |
+| [ML Kit Text Recognition](https://developers.google.com/ml-kit/vision/text-recognition) | `16.0.1` | Google APIs Terms |
+| [CameraX](https://developer.android.com/training/camerax) | `1.4.2` | Apache 2.0 |
+| [Room](https://developer.android.com/jetpack/androidx/releases/room) | `2.6.1` | Apache 2.0 |
+| [Glide](https://github.com/bumptech/glide) | `4.16.0` | Apache 2.0 |
+| [ZXing](https://github.com/zxing/zxing) | `3.5.3` | Apache 2.0 |
+| [Material Components for Android](https://github.com/material-components/material-components-android) | `1.12.0` | Apache 2.0 |
+| [Kotlin Coroutines](https://github.com/Kotlin/kotlinx.coroutines) | `1.9.0` | Apache 2.0 |
 
 ---
 

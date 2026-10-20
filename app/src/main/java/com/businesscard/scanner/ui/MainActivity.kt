@@ -353,16 +353,17 @@ class MainActivity : AppCompatActivity() {
 
     private fun showAbout() {
         AlertDialog.Builder(this)
-            .setTitle("Business Card Scanner")
+            .setTitle("Gemini Contact Card Scanner")
             .setMessage(
                 "Version ${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})\n" +
                 "Built: ${BuildConfig.BUILD_DATE}\n\n" +
                 "Scan, store, and search business cards entirely on-device — no account, no cloud, no data leaves your phone.\n\n" +
                 "Open source (LGPL v3)\n" +
-                "github.com/merloko/business-card-scanner\n\n" +
+                "github.com/keimech/gemini-contactcard-scanner\n\n" +
                 "Libraries\n" +
                 "• CameraX — Apache 2.0\n" +
                 "• ML Kit Text Recognition — Google\n" +
+                "• ML Kit GenAI Prompt API (Gemini Nano) — Google\n" +
                 "• Room Database — Apache 2.0\n" +
                 "• Glide — Apache 2.0\n" +
                 "• ZXing — Apache 2.0\n" +
@@ -372,7 +373,7 @@ class MainActivity : AppCompatActivity() {
             .setNeutralButton(R.string.about_view_source) { _, _ ->
                 try {
                     startActivity(Intent(Intent.ACTION_VIEW,
-                        Uri.parse("https://github.com/merloko/business-card-scanner")))
+                        Uri.parse("https://github.com/keimech/gemini-contactcard-scanner")))
                 } catch (e: ActivityNotFoundException) {
                     Toast.makeText(this, getString(R.string.no_app_for_action), Toast.LENGTH_SHORT).show()
                 }

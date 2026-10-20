@@ -6,12 +6,12 @@ Categories:
 
 License: LGPL-3.0-only
 
-Name: Business Card Scanner
-AutoName: Business Card Scanner
+Name: Gemini Contact Card Scanner
+AutoName: Gemini Contact Card Scanner
 
-AuthorName: Merloko
-SourceCode: https://github.com/merloko/business-card-scanner
-IssueTracker: https://github.com/merloko/business-card-scanner/issues
+AuthorName: Keimech
+SourceCode: https://github.com/keimech/gemini-contactcard-scanner
+IssueTracker: https://github.com/keimech/gemini-contactcard-scanner/issues
 
 Builds:
   - versionName: '1.4.0'
