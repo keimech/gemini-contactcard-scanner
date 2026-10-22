@@ -1,18 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Material 3 Dark Color Palette -->
-    <color name="m3_primary">#B9C3FF</color>
-    <color name="m3_on_primary">#002387</color>
-    <color name="m3_primary_container">#0A37A8</color>
-    <color name="m3_on_primary_container">#DDE1FF</color>
+    <!-- Material 3 Dark Color Palette (Modern AI & Slate Dark Theme) -->
+    <color name="m3_primary">#38BDF8</color> <!-- Sky 400 (Cool Electric Cyan) -->
+    <color name="m3_on_primary">#0F172A</color>
+    <color name="m3_primary_container">#0369A1</color> <!-- Sky 700 -->
+    <color name="m3_on_primary_container">#E0F2FE</color>
 
-    <color name="m3_secondary">#C4C5DD</color>
-    <color name="m3_on_secondary">#2D2F42</color>
-    <color name="m3_secondary_container">#434559</color>
-    <color name="m3_on_secondary_container">#E0E1F9</color>
+    <color name="m3_secondary">#94A3B8</color> <!-- Slate 400 -->
+    <color name="m3_on_secondary">#0F172A</color>
+    <color name="m3_secondary_container">#1E293B</color> <!-- Slate 800 -->
+    <color name="m3_on_secondary_container">#F1F5F9</color>
 
-    <color name="m3_surface">#111318</color>
-    <color name="m3_on_surface">#E2E2E9</color>
+    <color name="m3_surface">#090D16</color> <!-- Deep Obsidian Slate 950 -->
+    <color name="m3_on_surface">#F1F5F9</color> <!-- Slate 100 -->
 
-    <color name="ocr_background">#1D1F24</color>
+    <color name="ocr_background">#111827</color>
 </resources>
