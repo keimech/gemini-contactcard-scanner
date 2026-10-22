@@ -35,6 +35,7 @@ camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = 
 mlkit-text = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkit" }
 mlkit-text-chinese = { group = "com.google.mlkit", name = "text-recognition-chinese", version.ref = "mlkit-cjk" }
 mlkit-text-japanese = { group = "com.google.mlkit", name = "text-recognition-japanese", version.ref = "mlkit-cjk" }
+mlkit-text-korean = { group = "com.google.mlkit", name = "text-recognition-korean", version.ref = "mlkit-cjk" }
 mlkit-genai-prompt = { group = "com.google.mlkit", name = "genai-prompt", version.ref = "mlkit-genai-prompt" }
 mlkit-genai-schema-compiler = { group = "com.google.mlkit", name = "genai-schema-compiler", version.ref = "mlkit-genai-schema-compiler" }
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }

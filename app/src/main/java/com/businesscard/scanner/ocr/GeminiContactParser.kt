@@ -13,7 +13,7 @@ import com.google.mlkit.genai.schema.annotations.Guide
 
 @Generable("Structured contact details extracted from a business card")
 data class GenerableParsedContact(
-    @Guide(description = "Full name of the person (e.g. 山田 太郎, John Smith). Exclude honorifics like 様, 殿")
+    @Guide(description = "Full name of the person (e.g. 山田 太郎, John Smith, 金 太郎). Exclude honorifics like 様, 殿")
     val personName: String = "",
 
     @Guide(description = "Full official company or organization name (e.g. 株式会社サンプル, Acme Corp). Include corporate suffixes like 株式会社, 有限会社, 合同会社, Ltd., Inc., Co.")
@@ -44,9 +44,16 @@ class GeminiContactParser {
         Generation.getClient()
     }
 
+    @Volatile
+    private var cachedStatus: Int? = null
+
     suspend fun checkStatus(): Int {
+        val cached = cachedStatus
+        if (cached != null) return cached
         return try {
-            generativeModel.checkStatus()
+            val status = generativeModel.checkStatus()
+            cachedStatus = status
+            status
         } catch (e: Throwable) {
             Log.e(TAG, "Failed to check Gemini Nano status: ${e.message}")
             FeatureStatus.UNAVAILABLE
@@ -69,6 +76,7 @@ class GeminiContactParser {
     }
 
     suspend fun downloadIfNeeded(onProgress: ((String) -> Unit)? = null) {
+        cachedStatus = null
         val status = checkStatus()
         if (status == FeatureStatus.DOWNLOADABLE) {
             try {
@@ -76,7 +84,10 @@ class GeminiContactParser {
                     when (downloadStatus) {
                         is DownloadStatus.DownloadStarted -> onProgress?.invoke("Download started (${downloadStatus.bytesToDownload} bytes)")
                         is DownloadStatus.DownloadProgress -> onProgress?.invoke("Progress: ${downloadStatus.totalBytesDownloaded} bytes")
-                        is DownloadStatus.DownloadCompleted -> onProgress?.invoke("Download completed")
+                        is DownloadStatus.DownloadCompleted -> {
+                            cachedStatus = FeatureStatus.AVAILABLE
+                            onProgress?.invoke("Download completed")
+                        }
                         is DownloadStatus.DownloadFailed -> Log.e(TAG, "Download failed: ${downloadStatus.e.message}")
                     }
                 }
@@ -90,13 +101,13 @@ class GeminiContactParser {
         if (frontText.isBlank() && backText.isBlank()) return null
 
         return try {
-            if (!generativeModel.isStructuredOutputFeatureAvailable()) {
-                Log.d(TAG, "Structured output feature is not available on this device")
+            if (!isAvailable()) {
+                Log.d(TAG, "Gemini Nano feature status is not AVAILABLE")
                 return null
             }
 
-            if (!isAvailable()) {
-                Log.d(TAG, "Gemini Nano feature status is not AVAILABLE")
+            if (!generativeModel.isStructuredOutputFeatureAvailable()) {
+                Log.d(TAG, "Structured output feature is not available on this device")
                 return null
             }
 
@@ -105,15 +116,11 @@ class GeminiContactParser {
                 if (backText.isNotBlank()) append("Back:\n").append(backText)
             }.trim()
 
-            val promptText = """
-                Extract contact info from this business card OCR text. Match original text accurately.
-                OCR Text:
-                $combinedText
-            """.trimIndent()
+            val promptText = "Extract contact details from OCR text:\n$combinedText"
 
             val baseRequest = generateContentRequest(TextPart(promptText)) {
                 temperature = 0.0f
-                maxOutputTokens = 256
+                maxOutputTokens = 160
             }
 
             val typedRequest = generateTypedContentRequest(

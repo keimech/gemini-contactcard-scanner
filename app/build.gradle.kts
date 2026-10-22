@@ -5,6 +5,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
+    id("kotlin-parcelize")
 }
 
 android {
@@ -19,7 +20,7 @@ android {
         versionName = "1.4.0"
         val buildDate = SimpleDateFormat("yyyy-MM-dd").format(Date())
         buildConfigField("String", "BUILD_DATE", "\"$buildDate\"")
-        resourceConfigurations += setOf("en", "zh", "zh-rCN", "zh-rTW", "ja")
+        resourceConfigurations += setOf("en", "zh", "zh-rCN", "zh-rTW", "ja", "ko")
     }
 
     val keystorePassword = System.getenv("KEYSTORE_PASSWORD")
@@ -125,6 +126,7 @@ dependencies {
     implementation(libs.mlkit.text)
     implementation(libs.mlkit.text.chinese)
     implementation(libs.mlkit.text.japanese)
+    implementation(libs.mlkit.text.korean)
     implementation(libs.mlkit.genai.prompt)
     ksp(libs.mlkit.genai.schema.compiler)
     implementation(libs.room.runtime)

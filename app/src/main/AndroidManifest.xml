@@ -50,6 +50,7 @@
         <activity android:name=".ui.MyCardActivity" android:exported="false"
             android:launchMode="singleTop" />
         <activity android:name=".ui.MeetingRecorderActivity" android:exported="false" />
+        <activity android:name=".ui.ReviewContactsActivity" android:exported="false" />
 
         <receiver android:name=".ui.ReminderReceiver" android:exported="false" />
 

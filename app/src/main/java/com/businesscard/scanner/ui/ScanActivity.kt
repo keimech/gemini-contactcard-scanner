@@ -12,12 +12,12 @@ import android.view.View
 import android.widget.EditText
 import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.camera.core.*
@@ -25,19 +25,20 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import com.businesscard.scanner.BuildConfig
 import com.businesscard.scanner.R
-import com.businesscard.scanner.data.BusinessCard
 import com.businesscard.scanner.databinding.ActivityScanBinding
 import com.businesscard.scanner.ocr.TextParser
 import com.businesscard.scanner.ocr.OcrHelper
 import com.businesscard.scanner.ocr.GeminiContactParser
+import com.businesscard.scanner.ocr.BatchResultWrapper
+import com.businesscard.scanner.ocr.ParsedResult
 import com.google.mlkit.vision.common.InputImage
 import java.io.File
 import java.io.IOException
+import java.util.Collections
 
 class ScanActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityScanBinding
-    private val viewModel: BusinessCardViewModel by viewModels()
     private var imageCapture: ImageCapture? = null
 
     private var frontImagePath = ""
@@ -46,12 +47,15 @@ class ScanActivity : AppCompatActivity() {
     private var backText = ""
     private var isScanningBack = false
     private var eventTag = ""
-
-    private var preParseJob: Job? = null
-    private var cachedParsedContact: TextParser.ParsedContact? = null
+    private var isBatchMode = false
 
     private val ocrHelper = OcrHelper()
     private val geminiParser = GeminiContactParser()
+
+    // Thread-safe batch management
+    private var capturedCount = 0
+    private val batchResults: MutableList<ParsedResult> = Collections.synchronizedList(mutableListOf())
+    private val pendingParseJobs: MutableList<Job> = Collections.synchronizedList(mutableListOf())
 
     private val requestPermission = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -76,6 +80,10 @@ class ScanActivity : AppCompatActivity() {
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
+        if (intent.getBooleanExtra(EXTRA_BATCH_MODE, false)) {
+            isBatchMode = true
+        }
+
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
             PackageManager.PERMISSION_GRANTED) {
             startCamera()
@@ -86,9 +94,13 @@ class ScanActivity : AppCompatActivity() {
         binding.btnCapture.setOnClickListener { captureImage() }
         binding.btnGallery.setOnClickListener { pickImage.launch("image/*") }
         binding.btnFlip.setOnClickListener { flipToBack() }
-        binding.btnSaveContact.setOnClickListener { saveContact() }
+        binding.btnSaveContact.setOnClickListener { finishScanAndReview() }
         binding.btnPhotoScan.setOnClickListener { openPhotoScan() }
+        
+        binding.btnReviewBatch.setOnClickListener { finishScanAndReview() }
+
         updateUI()
+        updateBatchStatusUI()
 
         lifecycleScope.launch {
             geminiParser.downloadIfNeeded()
@@ -102,8 +114,18 @@ class ScanActivity : AppCompatActivity() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        if (item.itemId == R.id.action_event_tag) { showEventTagDialog(); return true }
-        return super.onOptionsItemSelected(item)
+        return when (item.itemId) {
+            R.id.action_event_tag -> { showEventTagDialog(); true }
+            R.id.action_batch_mode -> { toggleBatchMode(); true }
+            else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun toggleBatchMode() {
+        isBatchMode = !isBatchMode
+        updateBatchStatusUI()
+        val msg = if (isBatchMode) getString(R.string.batch_mode_active) else getString(R.string.scan_front_instruction)
+        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show()
     }
 
     private fun showEventTagDialog() {
@@ -148,7 +170,6 @@ class ScanActivity : AppCompatActivity() {
                 return
             }
         }
-        // Not installed — open Play Store listing
         try {
             startActivity(Intent(Intent.ACTION_VIEW,
                 Uri.parse("market://details?id=com.google.android.apps.photos.scanner")))
@@ -181,7 +202,6 @@ class ScanActivity : AppCompatActivity() {
 
     private fun captureImage() {
         val imageCapture = imageCapture ?: return
-        setBusy(true)
 
         val fileName = "card_${if (isScanningBack) "back" else "front"}_${System.currentTimeMillis()}.jpg"
         val file = File(filesDir, fileName)
@@ -192,10 +212,16 @@ class ScanActivity : AppCompatActivity() {
             ContextCompat.getMainExecutor(this),
             object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
-                    lifecycleScope.launch { runOcr(file.absolutePath) }
+                    capturedCount++
+                    updateBatchStatusUI()
+                    binding.btnReviewBatch.visibility = View.VISIBLE
+                    
+                    val parseJob = lifecycleScope.launch {
+                        processCapturedImageInBackground(file.absolutePath)
+                    }
+                    pendingParseJobs.add(parseJob)
                 }
                 override fun onError(exc: ImageCaptureException) {
-                    setBusy(false)
                     Toast.makeText(this@ScanActivity, getString(R.string.capture_failed, exc.message), Toast.LENGTH_SHORT).show()
                 }
             }
@@ -215,67 +241,100 @@ class ScanActivity : AppCompatActivity() {
                         destFile.outputStream().use { output -> input.copyTo(output) }
                     }
                 }
-                runOcr(destFile.absolutePath)
+                capturedCount++
+                updateBatchStatusUI()
+                binding.btnReviewBatch.visibility = View.VISIBLE
+                val parseJob = lifecycleScope.launch {
+                    processCapturedImageInBackground(destFile.absolutePath)
+                }
+                pendingParseJobs.add(parseJob)
             } catch (e: Exception) {
-                setBusy(false)
                 Toast.makeText(this@ScanActivity, "Could not read image: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                setBusy(false)
             }
         }
     }
 
-    private suspend fun runOcr(imagePath: String) {
-        val image = try {
-            withContext(Dispatchers.IO) {
+    private suspend fun processCapturedImageInBackground(imagePath: String) {
+        try {
+            val image = withContext(Dispatchers.IO) {
                 InputImage.fromFilePath(this@ScanActivity, Uri.fromFile(File(imagePath)))
             }
+            val text = ocrHelper.recognize(image)
+            if (text.isNotBlank()) {
+                val currentFrontText = if (!isScanningBack) text else frontText
+                val currentBackText = if (isScanningBack) text else backText
+                val currentFrontPath = if (!isScanningBack) imagePath else frontImagePath
+                val currentBackPath = if (isScanningBack) imagePath else backImagePath
+
+                val parsed = TextParser.parseSmart(currentFrontText, currentBackText, geminiParser)
+                val initialTags = eventTag.ifBlank { "" }
+
+                val result = ParsedResult(
+                    personName = parsed.personName,
+                    companyName = parsed.companyName,
+                    jobTitle = parsed.jobTitle,
+                    phone = parsed.phone,
+                    mobile = parsed.mobile,
+                    email = parsed.email,
+                    website = parsed.website,
+                    address = parsed.address,
+                    rawTextFront = currentFrontText,
+                    rawTextBack = currentBackText,
+                    frontImagePath = currentFrontPath,
+                    backImagePath = currentBackPath,
+                    tags = initialTags
+                )
+                batchResults.add(result)
+            }
         } catch (e: Exception) {
-            setBusy(false)
-            Toast.makeText(this, getString(R.string.image_load_error, e.message), Toast.LENGTH_SHORT).show()
-            return
+            if (BuildConfig.DEBUG) Log.e(TAG, "Background parsing error: ${e.message}", e)
+        } finally {
+            withContext(Dispatchers.Main) {
+                updateBatchStatusUI()
+            }
         }
-        val text = ocrHelper.recognize(image)
-        setBusy(false)
-        if (text.isBlank()) {
-            Toast.makeText(this, getString(R.string.ocr_no_text), Toast.LENGTH_LONG).show()
-            return
-        }
-        if (isScanningBack) {
-            replacePreviousImage(backImagePath, imagePath)
-            backImagePath = imagePath
-            backText = text
-            binding.textOcrResult.text = "Back:\n$text"
-            binding.rowSecondary.visibility = View.VISIBLE
-            binding.btnFlip.visibility = View.GONE
-            binding.btnSaveContact.visibility = View.VISIBLE
-            binding.btnCapture.visibility = View.GONE
-            binding.btnGallery.visibility = View.GONE
-            Toast.makeText(this, getString(R.string.back_scanned), Toast.LENGTH_SHORT).show()
+    }
+
+    private fun updateBatchStatusUI() {
+        if (capturedCount > 0) {
+            binding.textBatchStatus.visibility = View.VISIBLE
+            binding.textBatchStatus.text = getString(R.string.batch_status_format, capturedCount, batchResults.size)
+            binding.btnReviewBatch.visibility = View.VISIBLE
+        } else if (isBatchMode) {
+            binding.textBatchStatus.visibility = View.VISIBLE
+            binding.textBatchStatus.text = getString(R.string.batch_mode_active)
+            binding.btnReviewBatch.visibility = View.VISIBLE
         } else {
-            replacePreviousImage(frontImagePath, imagePath)
-            frontImagePath = imagePath
-            frontText = text
-            binding.textOcrResult.text = "Front:\n$text"
-            binding.rowSecondary.visibility = View.VISIBLE
-            binding.btnFlip.visibility = View.VISIBLE
-            binding.btnSaveContact.visibility = View.VISIBLE
-            Toast.makeText(this, getString(R.string.front_scanned), Toast.LENGTH_SHORT).show()
-        }
-        updateUI()
-        triggerPreParse()
-    }
-
-    private fun triggerPreParse() {
-        preParseJob?.cancel()
-        cachedParsedContact = null
-        preParseJob = lifecycleScope.launch {
-            cachedParsedContact = TextParser.parseSmart(frontText, backText, geminiParser)
+            binding.textBatchStatus.visibility = View.GONE
         }
     }
 
-    // A retake before saving overwrites frontImagePath/backImagePath, otherwise
-    // orphaning the previous capture's file on disk with nothing left to reference it.
-    private fun replacePreviousImage(oldPath: String, newPath: String) {
-        if (oldPath.isNotBlank() && oldPath != newPath) File(oldPath).delete()
+    private fun finishScanAndReview() {
+        setBusy(true)
+        lifecycleScope.launch {
+            val activeJobs = pendingParseJobs.filter { it.isActive }
+            if (activeJobs.isNotEmpty()) {
+                binding.textBatchStatus.text = getString(R.string.parsing_remaining, activeJobs.size)
+                activeJobs.joinAll()
+            }
+            setBusy(false)
+
+            if (batchResults.isEmpty()) {
+                Toast.makeText(this@ScanActivity, getString(R.string.no_cards_to_review), Toast.LENGTH_SHORT).show()
+                return@launch
+            }
+
+            val intent = Intent(this@ScanActivity, ReviewContactsActivity::class.java).apply {
+                putExtra(
+                    ReviewContactsActivity.EXTRA_BATCH_RESULTS,
+                    BatchResultWrapper(ArrayList(batchResults))
+                )
+            }
+            startActivity(intent)
+            finish()
+        }
     }
 
     private fun flipToBack() {
@@ -286,64 +345,11 @@ class ScanActivity : AppCompatActivity() {
         Toast.makeText(this, getString(R.string.flip_card), Toast.LENGTH_SHORT).show()
     }
 
-    private fun saveContact() {
-        setBusy(true)
-        lifecycleScope.launch {
-            try {
-                var parsed = cachedParsedContact
-                if (parsed == null) {
-                    preParseJob?.join()
-                    parsed = cachedParsedContact ?: TextParser.parseSmart(frontText, backText, geminiParser)
-                }
-                val initialTags = eventTag.ifBlank { "" }
-                val card = BusinessCard(
-                    personName = parsed.personName,
-                    companyName = parsed.companyName,
-                    jobTitle = parsed.jobTitle,
-                    phone = parsed.phone,
-                    mobile = parsed.mobile,
-                    email = parsed.email,
-                    website = parsed.website,
-                    address = parsed.address,
-                    rawTextFront = frontText,
-                    rawTextBack = backText,
-                    frontImagePath = frontImagePath,
-                    backImagePath = backImagePath,
-                    tags = initialTags
-                )
-                val duplicate = viewModel.findDuplicate(parsed.personName, parsed.email)
-                if (duplicate != null && (parsed.personName.isNotBlank() || parsed.email.isNotBlank())) {
-                    AlertDialog.Builder(this@ScanActivity)
-                        .setTitle(R.string.possible_duplicate_title)
-                        .setMessage(getString(R.string.possible_duplicate_message, duplicate.personName))
-                        .setPositiveButton(R.string.save_anyway) { _, _ ->
-                            viewModel.insert(card) {
-                                runOnUiThread {
-                                    Toast.makeText(this@ScanActivity, getString(R.string.contact_saved), Toast.LENGTH_SHORT).show()
-                                    finish()
-                                }
-                            }
-                        }
-                        .setNegativeButton(R.string.cancel, null)
-                        .show()
-                } else {
-                    viewModel.insert(card) {
-                        runOnUiThread {
-                            Toast.makeText(this@ScanActivity, getString(R.string.contact_saved), Toast.LENGTH_SHORT).show()
-                            finish()
-                        }
-                    }
-                }
-            } finally {
-                setBusy(false)
-            }
-        }
-    }
-
     private fun setBusy(busy: Boolean) {
         binding.progressBar.visibility = if (busy) View.VISIBLE else View.GONE
         binding.btnCapture.isEnabled = !busy
         binding.btnGallery.isEnabled = !busy
+        binding.btnReviewBatch.isEnabled = !busy
     }
 
     private fun updateUI() {
@@ -370,5 +376,6 @@ class ScanActivity : AppCompatActivity() {
 
     companion object {
         private const val TAG = "ScanActivity"
+        const val EXTRA_BATCH_MODE = "extra_batch_mode"
     }
 }

@@ -7,6 +7,7 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.TextRecognizer
 import com.google.mlkit.vision.text.chinese.ChineseTextRecognizerOptions
 import com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
+import com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -18,6 +19,7 @@ class OcrHelper {
     private val latin = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     private val chinese = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build())
     private val japanese = TextRecognition.getClient(JapaneseTextRecognizerOptions.Builder().build())
+    private val korean = TextRecognition.getClient(KoreanTextRecognizerOptions.Builder().build())
 
     suspend fun recognizeFile(context: Context, path: String): String {
         if (path.isBlank()) return ""
@@ -35,17 +37,18 @@ class OcrHelper {
         val latinText = async { run(latin, image) }
         val chineseText = async { run(chinese, image) }
         val japaneseText = async { run(japanese, image) }
-        merge(latinText.await(), chineseText.await(), japaneseText.await())
+        val koreanText = async { run(korean, image) }
+        merge(latinText.await(), chineseText.await(), japaneseText.await(), koreanText.await())
     }
 
     // Latin is the base. CJK recognizers only contribute lines that contain
-    // actual CJK characters, preventing their misreads of Latin text from
+    // actual CJK/Hangul characters, preventing their misreads of Latin text from
     // polluting the output.
-    private fun merge(latin: String, chinese: String, japanese: String): String {
+    private fun merge(latin: String, chinese: String, japanese: String, korean: String): String {
         val seen = LinkedHashSet<String>()
         latin.lines().mapTo(seen) { it.trim() }
         seen.removeIf { it.isBlank() }
-        (chinese.lines().asSequence() + japanese.lines().asSequence())
+        (chinese.lines().asSequence() + japanese.lines().asSequence() + korean.lines().asSequence())
             .map { it.trim() }
             .filter { it.isNotBlank() && CjkUtils.containsCjk(it) }
             .forEach { seen.add(it) }
@@ -63,5 +66,6 @@ class OcrHelper {
         latin.close()
         chinese.close()
         japanese.close()
+        korean.close()
     }
 }

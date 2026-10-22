@@ -22,7 +22,7 @@ This document serves as a comprehensive operational and architectural guide for 
 - **Database:** Room 2.6.1 (SQLite) with WAL mode enabled
 - **On-Device AI & OCR:**
   - **ML Kit GenAI Prompt API:** `1.0.0-beta4` (`com.google.mlkit:genai-prompt`) — On-device Gemini Nano structured parsing
-  - **ML Kit Text Recognition:** `16.0.1` / CJK `16.0.0` — Offline OCR for English, Japanese, Chinese (Simplified & Traditional)
+  - **ML Kit Text Recognition:** `16.0.1` / CJK `16.0.0` — Offline OCR for English, Japanese, Chinese (Simplified & Traditional), and Korean
 - **Camera & Media:** CameraX `1.4.2`, Glide `4.16.0`
 - **Sharing & Connectivity:** ZXing `3.5.3` (QR code generation), Android NFC API
 - **Concurrency:** Kotlin Coroutines `1.9.0` & StateFlow / LiveData
@@ -44,13 +44,18 @@ app/src/main/java/com/businesscard/scanner/
 │   └── VCardParser.kt          # vCard (.vcf) import & parse logic
 ├── ocr/                        # OCR & GenAI Processing Layer
 │   ├── GeminiContactParser.kt  # On-device Gemini Nano parsing via ML Kit GenAI Prompt API
-│   ├── OcrHelper.kt            # ML Kit Text Recognition wrapper
+│   ├── OcrHelper.kt            # ML Kit Text Recognition wrapper (Latin, Chinese, Japanese, Korean)
 │   ├── TextParser.kt           # Regex/rule-based fallback contact parser
 │   ├── AutoTagger.kt           # Automatic tag classification logic
-│   └── CjkUtils.kt             # CJK character utilities
+│   ├── ParsedResult.kt         # Data model for intermediate batch scan results
+│   ├── BatchResultWrapper.kt   # Parcelable wrapper for passing batch scan items
+│   └── CjkUtils.kt             # CJK & Hangul character utilities
 ├── ui/                         # UI Presentation Layer (Activities & ViewModels)
 │   ├── MainActivity.kt         # Main contacts list, search, tag filter, import/backup
 │   ├── ScanActivity.kt         # Camera/Gallery scan, OCR & Gemini Nano extraction
+│   ├── ReviewContactsActivity.kt # Step-by-step review & edit screen for batch scan verification
+│   ├── ReviewAdapter.kt        # ViewPager2 adapter for card review and inline field editing
+│   ├── ReviewViewModel.kt      # ViewModel for batch review persistence operations
 │   ├── ContactDetailActivity.kt# Contact details, interaction logs, rescan
 │   ├── EditContactActivity.kt   # Contact edit, manual tag management
 │   ├── MyCardActivity.kt       # Digital card creation, QR code, NFC tag write
@@ -75,6 +80,12 @@ app/src/main/java/com/businesscard/scanner/
 - Must verify `isStructuredOutputFeatureAvailable()` and `isAvailable()` before invoking `generateContent()`.
 - Warmed up and downloaded as needed without blocking UI.
 - Fallback: If Gemini Nano is unavailable on the device, the app seamlessly falls back to `TextParser.kt` (regex/heuristics).
+
+### Scanning & Camera Features (`ScanActivity.kt`)
+- **CameraX Enhancements:** Uses `CAPTURE_MODE_MAXIMIZE_QUALITY` and tap-to-focus (`FocusMeteringAction`).
+- **System Camera Integration:** Supports launching external system camera app (`MediaStore.ACTION_IMAGE_CAPTURE`) for device-native camera processing.
+- **Continuous Batch Scan:** Non-blocking continuous capture mode backed by a background Coroutine queue that performs OCR + Gemini Nano extraction + Room DB insertion asynchronously.
+- **Extracted Details Preview:** Instantly renders a card preview panel showing classified details (Name, Company, Title, Phone, Email, Address) upon scan.
 
 ### Offline Storage & Privacy
 - **Database:** SQLite DB located at `/data/data/com.businesscard.scanner/databases/business_card_database`.

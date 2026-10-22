@@ -15,7 +15,7 @@
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:titleTextAppearance="?attr/textAppearanceTitleLarge"
+            app:titleTextAppearance="@attr/textAppearanceTitleLarge"
             app:titleTextColor="@android:color/white" />
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -36,7 +36,19 @@
             android:gravity="center"
             android:background="@android:color/black" />
 
-        <!-- PhotoScan tip banner -->
+        <!-- Continuous Batch Scan Status Banner -->
+        <TextView
+            android:id="@+id/textBatchStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#3300E676"
+            android:padding="8dp"
+            android:textColor="#FF00E676"
+            android:textAppearance="?attr/textAppearanceBodyMedium"
+            android:gravity="center"
+            android:visibility="gone" />
+
+        <!-- PhotoScan / System Camera tip banner -->
         <LinearLayout
             android:id="@+id/photoscanTip"
             android:layout_width="match_parent"
@@ -46,21 +58,23 @@
             android:paddingHorizontal="12dp"
             android:paddingVertical="8dp"
             android:gravity="center_vertical">
-            <TextView
+            <Button
+                android:id="@+id/btnSystemCamera"
                 android:layout_width="0dp"
-                android:layout_height="wrap_content"
+                android:layout_height="48dp"
                 android:layout_weight="1"
-                android:text="@string/photoscan_tip"
-                android:textColor="@color/scan_tip_text"
-                android:textAppearance="?attr/textAppearanceBodySmall" />
+                android:layout_marginEnd="6dp"
+                android:text="@string/btn_system_camera"
+                android:textSize="12sp"
+                style="@style/Widget.Material3.Button.OutlinedButton" />
             <Button
                 android:id="@+id/btnPhotoScan"
-                android:layout_width="wrap_content"
+                android:layout_width="0dp"
                 android:layout_height="48dp"
+                android:layout_weight="1"
+                android:layout_marginStart="6dp"
                 android:text="@string/open_photoscan"
                 android:textSize="12sp"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
                 style="@style/Widget.Material3.Button.OutlinedButton" />
         </LinearLayout>
 
@@ -70,16 +84,70 @@
             android:layout_height="0dp"
             android:layout_weight="1" />
 
-        <ScrollView
+        <!-- Extracted Structured Details Preview Panel -->
+        <LinearLayout
+            android:id="@+id/cardExtractedDetails"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:minHeight="90dp"
+            android:orientation="vertical"
+            android:padding="12dp"
+            android:background="@color/scan_overlay_bg"
+            android:visibility="gone">
+            <TextView
+                android:id="@+id/textExtractedTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/extracted_details_title"
+                android:textAppearance="?attr/textAppearanceTitleMedium"
+                android:textColor="@android:color/white"
+                android:paddingBottom="4dp" />
+            <TextView
+                android:id="@+id/textExtractedName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#EEEEEE"
+                android:textAppearance="?attr/textAppearanceBodyMedium" />
+            <TextView
+                android:id="@+id/textExtractedCompany"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#CCCCCC"
+                android:textAppearance="?attr/textAppearanceBodySmall" />
+            <TextView
+                android:id="@+id/textExtractedJobTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#CCCCCC"
+                android:textAppearance="?attr/textAppearanceBodySmall" />
+            <TextView
+                android:id="@+id/textExtractedPhone"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#CCCCCC"
+                android:textAppearance="?attr/textAppearanceBodySmall" />
+            <TextView
+                android:id="@+id/textExtractedEmail"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#CCCCCC"
+                android:textAppearance="?attr/textAppearanceBodySmall" />
+            <TextView
+                android:id="@+id/textExtractedAddress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#CCCCCC"
+                android:textAppearance="?attr/textAppearanceBodySmall" />
+        </LinearLayout>
+
+        <ScrollView
+            android:layout_width="match_parent"
+            android:layout_height="100dp"
             android:background="@color/scan_overlay_bg">
             <TextView
                 android:id="@+id/textOcrResult"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:padding="12dp"
+                android:padding="8dp"
                 android:textColor="@color/scan_ocr_text"
                 android:textAppearance="?attr/textAppearanceBodySmall"
                 android:textIsSelectable="true" />
@@ -144,6 +212,16 @@
                 android:layout_marginEnd="6dp"
                 android:text="@string/scan_back"
                 style="@style/Widget.Material3.Button.TonalButton" />
+
+            <Button
+                android:id="@+id/btnReviewBatch"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginEnd="6dp"
+                android:text="@string/finish_batch_scan"
+                style="@style/Widget.Material3.Button"
+                android:visibility="gone" />
 
             <Button
                 android:id="@+id/btnSaveContact"
