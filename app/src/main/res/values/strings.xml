@@ -33,6 +33,7 @@
     <string name="cancel">Cancel</string>
     <string name="widget_description">Shows your contact count with quick scan and view buttons</string>
     <string name="hint_name">Name</string>
+    <string name="hint_phonetic_name">Furigana / Reading (ふりがな)</string>
     <string name="hint_company">Company</string>
     <string name="hint_job_title">Job Title</string>
     <string name="hint_phone">Phone (Landline)</string>
@@ -80,9 +81,11 @@
     <string name="my_card_qr_desc">QR code for my digital card</string>
     <string name="my_card_share_chooser">Share my card via…</string>
     <string name="qr_generate_failed">Could not generate QR code</string>
-    <string name="import_vcard_success">Imported %d contact(s)</string>
-    <string name="import_vcard_none">No new contacts found in file</string>
     <string name="import_vcard_failed">Import failed: %s</string>
+    <string name="import_vcard_success">Imported %d contact(s) from vCard</string>
+    <string name="import_vcard_none">No new contacts found in file</string>
+    <string name="next_card_ready">Next card ready!</string>
+    <string name="finish_batch_scan">Review Batch</string>
 
     <!-- Image viewer -->
     <string name="image_front_label">Front</string>
@@ -214,7 +217,6 @@
     <string name="extracted_address_label">Address: %s</string>
     <string name="batch_status">Background processing: %1$d | Saved: %2$d</string>
     <string name="batch_mode_active">Continuous Scan Mode ON</string>
-    <string name="finish_batch_scan">スキャン終了 (確認へ)</string>
     <string name="batch_status_format">連続撮影: %1$d件 | 解析完了: %2$d件</string>
     <string name="parsing_remaining">解析中&#8230; 残り %1$d件</string>
     <string name="review_title">スキャン結果の確認</string>

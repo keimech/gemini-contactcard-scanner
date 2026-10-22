@@ -1,6 +1,7 @@
 package com.businesscard.scanner.ui
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -8,6 +9,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.widget.EditText
 import android.widget.Toast
@@ -21,6 +23,9 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import androidx.camera.core.*
+import androidx.camera.core.resolutionselector.AspectRatioStrategy
+import androidx.camera.core.resolutionselector.ResolutionSelector
+import androidx.camera.core.resolutionselector.ResolutionStrategy
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.core.content.ContextCompat
 import com.businesscard.scanner.BuildConfig
@@ -183,21 +188,49 @@ class ScanActivity : AppCompatActivity() {
         val cameraProviderFuture = ProcessCameraProvider.getInstance(this)
         cameraProviderFuture.addListener({
             val cameraProvider = cameraProviderFuture.get()
-            val preview = Preview.Builder().build().also {
-                it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
-            }
-            imageCapture = ImageCapture.Builder()
-                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+
+            val resolutionSelector = ResolutionSelector.Builder()
+                .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+                .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
                 .build()
+
+            val preview = Preview.Builder()
+                .setResolutionSelector(resolutionSelector)
+                .build().also {
+                    it.setSurfaceProvider(binding.viewFinder.surfaceProvider)
+                }
+
+            imageCapture = ImageCapture.Builder()
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY)
+                .setResolutionSelector(resolutionSelector)
+                .build()
+
             try {
                 cameraProvider.unbindAll()
-                cameraProvider.bindToLifecycle(
+                val camera = cameraProvider.bindToLifecycle(
                     this, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture
                 )
+                setupTapToFocus(camera)
             } catch (e: Exception) {
                 if (BuildConfig.DEBUG) Log.e(TAG, "Camera bind failed", e)
             }
         }, ContextCompat.getMainExecutor(this))
+    }
+
+    @SuppressLint("ClickableViewAccessibility")
+    private fun setupTapToFocus(camera: Camera) {
+        binding.viewFinder.setOnTouchListener { _, event ->
+            if (event.action == MotionEvent.ACTION_UP) {
+                val factory = binding.viewFinder.meteringPointFactory
+                val point = factory.createPoint(event.x, event.y)
+                val action = FocusMeteringAction.Builder(
+                    point,
+                    FocusMeteringAction.FLAG_AF or FocusMeteringAction.FLAG_AE
+                ).setAutoCancelDuration(3, java.util.concurrent.TimeUnit.SECONDS).build()
+                camera.cameraControl.startFocusAndMetering(action)
+            }
+            true
+        }
     }
 
     private fun captureImage() {
@@ -214,8 +247,11 @@ class ScanActivity : AppCompatActivity() {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     capturedCount++
                     updateBatchStatusUI()
-                    binding.btnReviewBatch.visibility = View.VISIBLE
                     
+                    if (isBatchMode) {
+                        Toast.makeText(this@ScanActivity, getString(R.string.next_card_ready), Toast.LENGTH_SHORT).show()
+                    }
+
                     val parseJob = lifecycleScope.launch {
                         processCapturedImageInBackground(file.absolutePath)
                     }
@@ -302,10 +338,13 @@ class ScanActivity : AppCompatActivity() {
             binding.textBatchStatus.visibility = View.VISIBLE
             binding.textBatchStatus.text = getString(R.string.batch_status_format, capturedCount, batchResults.size)
             binding.btnReviewBatch.visibility = View.VISIBLE
+            // 親レイアウトも表示しないとボタンが見えないため、ここを修正
+            binding.rowSecondary.visibility = View.VISIBLE
         } else if (isBatchMode) {
             binding.textBatchStatus.visibility = View.VISIBLE
             binding.textBatchStatus.text = getString(R.string.batch_mode_active)
             binding.btnReviewBatch.visibility = View.VISIBLE
+            binding.rowSecondary.visibility = View.VISIBLE
         } else {
             binding.textBatchStatus.visibility = View.GONE
         }

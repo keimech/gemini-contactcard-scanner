@@ -30,6 +30,7 @@ interface BusinessCardDao {
     @Query("""
         SELECT * FROM business_cards
         WHERE personName LIKE '%' || :query || '%' ESCAPE '\'
+        OR phoneticName LIKE '%' || :query || '%' ESCAPE '\'
         OR companyName LIKE '%' || :query || '%' ESCAPE '\'
         OR tags LIKE '%' || :query || '%' ESCAPE '\'
         ORDER BY createdAt DESC

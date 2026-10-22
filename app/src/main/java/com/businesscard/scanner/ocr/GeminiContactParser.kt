@@ -13,8 +13,11 @@ import com.google.mlkit.genai.schema.annotations.Guide
 
 @Generable("Structured contact details extracted from a business card")
 data class GenerableParsedContact(
-    @Guide(description = "Full name of the person (e.g. 山田 太郎, John Smith, 金 太郎). Exclude honorifics like 様, 殿")
+    @Guide(description = "Full name of the person (e.g. 山田 太郎, John Smith). Exclude department names, division names, affiliations, and company names (e.g. 営業部, 開発本部, Sales Dept). If both Japanese and English names are present, ALWAYS prefer the Japanese name. If surname and given name are separated by wide spaces or on separate lines, join them into a single full name (e.g. 山田 太郎). Exclude honorifics like 様, 殿")
     val personName: String = "",
+
+    @Guide(description = "Furigana or phonetic reading of the person's name in Hiragana (e.g. やまだ たろう). Extract from Furigana/Katakana/Romaji reading on the card if present, or generate the standard Hiragana reading for the Japanese Kanji name.")
+    val phoneticName: String = "",
 
     @Guide(description = "Full official company or organization name (e.g. 株式会社サンプル, Acme Corp). Include corporate suffixes like 株式会社, 有限会社, 合同会社, Ltd., Inc., Co.")
     val companyName: String = "",
@@ -31,10 +34,10 @@ data class GenerableParsedContact(
     @Guide(description = "Email address")
     val email: String = "",
 
-    @Guide(description = "Official website URL")
+    @Guide(description = "Official website URL (e.g. https://example.com, www.example.com). Do NOT extract the domain part of the email address (e.g. example.com from taro@example.com) as a website unless explicitly printed as a website URL.")
     val website: String = "",
 
-    @Guide(description = "Physical postal address or office location")
+    @Guide(description = "Physical postal address or office location (e.g. 〒100-0001 東京都千代田区1-1-1 サンプルビル5F). Include postal code, prefecture, city, street, and building/floor name if available.")
     val address: String = ""
 )
 
@@ -116,7 +119,7 @@ class GeminiContactParser {
                 if (backText.isNotBlank()) append("Back:\n").append(backText)
             }.trim()
 
-            val promptText = "Extract contact details from OCR text:\n$combinedText"
+            val promptText = "Extract contact details from OCR text:\n$combinedText\nNote: If the person's name appears in both Japanese (Kanji/Kana) and English/Romaji, ALWAYS prioritize the Japanese name. If surname and given name are separated by large spaces or split across lines, join them into a single full name (e.g. 山田 太郎)."
 
             val baseRequest = generateContentRequest(TextPart(promptText)) {
                 temperature = 0.0f
@@ -133,6 +136,7 @@ class GeminiContactParser {
             if (candidate != null) {
                 TextParser.ParsedContact(
                     personName = candidate.personName,
+                    phoneticName = candidate.phoneticName,
                     companyName = candidate.companyName,
                     jobTitle = candidate.jobTitle,
                     phone = candidate.phone,

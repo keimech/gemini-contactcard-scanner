@@ -117,7 +117,11 @@ class ContactDetailActivity : AppCompatActivity() {
     private fun displayCard(card: BusinessCard) {
         supportActionBar?.title = card.personName.ifBlank { getString(R.string.contact_details) }
 
-        binding.textPersonName.text = card.personName.ifBlank { getString(R.string.fallback_unknown_name) }
+        if (card.phoneticName.isNotBlank()) {
+            binding.textPersonName.text = "%s (%s)".format(card.personName, card.phoneticName)
+        } else {
+            binding.textPersonName.text = card.personName.ifBlank { getString(R.string.fallback_unknown_name) }
+        }
         binding.textCompanyName.text = card.companyName.ifBlank { "—" }
         binding.textJobTitle.text = card.jobTitle.ifBlank { "—" }
 

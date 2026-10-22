@@ -51,6 +51,7 @@ class ReviewAdapter(
 
         // Populate fields
         binding.editPersonName.setText(item.personName)
+        binding.editPhoneticName.setText(item.phoneticName)
         binding.editCompanyName.setText(item.companyName)
         binding.editJobTitle.setText(item.jobTitle)
         binding.editPhone.setText(item.phone)
@@ -86,6 +87,7 @@ class ReviewAdapter(
             if (adapterPos != RecyclerView.NO_POSITION) {
                 val card = BusinessCard(
                     personName = binding.editPersonName.text.toString().trim(),
+                    phoneticName = binding.editPhoneticName.text.toString().trim(),
                     companyName = binding.editCompanyName.text.toString().trim(),
                     jobTitle = binding.editJobTitle.text.toString().trim(),
                     phone = binding.editPhone.text.toString().trim(),

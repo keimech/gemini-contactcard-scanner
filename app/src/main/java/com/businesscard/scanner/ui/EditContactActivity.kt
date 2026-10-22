@@ -59,6 +59,7 @@ class EditContactActivity : AppCompatActivity() {
             if (card == null) { finish(); return@load }
 
             binding.editPersonName.setText(card.personName)
+            binding.editPhoneticName.setText(card.phoneticName)
             binding.editCompanyName.setText(card.companyName)
             binding.editJobTitle.setText(card.jobTitle)
             binding.editPhone.setText(card.phone)
@@ -89,6 +90,7 @@ class EditContactActivity : AppCompatActivity() {
                         val parsed = TextParser.parseSmart(frontText, backText, geminiParser)
                         // Overwrite parsed fields; leave notes untouched (user-written)
                         if (parsed.personName.isNotBlank())  binding.editPersonName.setText(parsed.personName)
+                        if (parsed.phoneticName.isNotBlank()) binding.editPhoneticName.setText(parsed.phoneticName)
                         if (parsed.companyName.isNotBlank()) binding.editCompanyName.setText(parsed.companyName)
                         if (parsed.jobTitle.isNotBlank())    binding.editJobTitle.setText(parsed.jobTitle)
                         if (parsed.phone.isNotBlank())       binding.editPhone.setText(parsed.phone)
@@ -109,6 +111,7 @@ class EditContactActivity : AppCompatActivity() {
             binding.btnSave.setOnClickListener {
                 val updated = card.copy(
                     personName  = binding.editPersonName.text.toString().trim(),
+                    phoneticName = binding.editPhoneticName.text.toString().trim(),
                     companyName = binding.editCompanyName.text.toString().trim(),
                     jobTitle    = binding.editJobTitle.text.toString().trim(),
                     phone       = binding.editPhone.text.toString().trim(),

@@ -38,29 +38,120 @@ class OcrHelper {
         val chineseText = async { run(chinese, image) }
         val japaneseText = async { run(japanese, image) }
         val koreanText = async { run(korean, image) }
-        merge(latinText.await(), chineseText.await(), japaneseText.await(), koreanText.await())
+        smartMerge(latinText.await(), chineseText.await(), japaneseText.await(), koreanText.await())
     }
 
-    // Latin is the base. CJK recognizers only contribute lines that contain
-    // actual CJK/Hangul characters, preventing their misreads of Latin text from
-    // polluting the output.
-    private fun merge(latin: String, chinese: String, japanese: String, korean: String): String {
-        val seen = LinkedHashSet<String>()
-        latin.lines().mapTo(seen) { it.trim() }
-        seen.removeIf { it.isBlank() }
-        (chinese.lines().asSequence() + japanese.lines().asSequence() + korean.lines().asSequence())
-            .map { it.trim() }
-            .filter { it.isNotBlank() && CjkUtils.containsCjk(it) }
-            .forEach { seen.add(it) }
-        return seen.joinToString("\n")
+    private fun smartMerge(
+        latin: String,
+        chinese: String,
+        japanese: String,
+        korean: String
+    ): String {
+        val japaneseHasKanaOrCjk = japanese.lines().any { line ->
+            line.any { c -> (c.code in 0x3040..0x309F) || (c.code in 0x30A0..0x30FF) } || CjkUtils.containsCjk(line)
+        }
+
+        if (japaneseHasKanaOrCjk) {
+            val result = LinkedHashSet<String>()
+            japanese.lines().map { it.trim() }.filter { it.isNotBlank() }.forEach { result.add(it) }
+
+            latin.lines().map { it.trim() }.filter { it.isNotBlank() }.forEach { line ->
+                if (result.none { it.contains(line, ignoreCase = true) || line.contains(it, ignoreCase = true) }) {
+                    if (line.contains("@") || line.contains("http") || line.contains("www.") || line.any { it.isDigit() }) {
+                        result.add(line)
+                    }
+                }
+            }
+            return result.joinToString("\n")
+        }
+
+        val chineseHasCjk = chinese.lines().any { CjkUtils.containsCjk(it) }
+        if (chineseHasCjk) {
+            val result = LinkedHashSet<String>()
+            chinese.lines().map { it.trim() }.filter { it.isNotBlank() }.forEach { result.add(it) }
+            latin.lines().map { it.trim() }.filter { it.isNotBlank() }.forEach { line ->
+                if (result.none { it.contains(line, ignoreCase = true) }) {
+                    if (line.contains("@") || line.contains("http") || line.contains("www.") || line.any { it.isDigit() }) {
+                        result.add(line)
+                    }
+                }
+            }
+            return result.joinToString("\n")
+        }
+
+        val koreanHasHangul = korean.lines().any { line ->
+            line.any { c -> (c.code in 0xAC00..0xD7AF) || (c.code in 0x1100..0x11FF) }
+        }
+        if (koreanHasHangul) {
+            val result = LinkedHashSet<String>()
+            korean.lines().map { it.trim() }.filter { it.isNotBlank() }.forEach { result.add(it) }
+            latin.lines().map { it.trim() }.filter { it.isNotBlank() }.forEach { line ->
+                if (result.none { it.contains(line, ignoreCase = true) }) {
+                    if (line.contains("@") || line.contains("http") || line.contains("www.") || line.any { it.isDigit() }) {
+                        result.add(line)
+                    }
+                }
+            }
+            return result.joinToString("\n")
+        }
+
+        return latin.lines().map { it.trim() }.filter { it.isNotBlank() }.distinct().joinToString("\n")
     }
 
     private suspend fun run(recognizer: TextRecognizer, image: InputImage): String =
         suspendCancellableCoroutine { cont ->
             recognizer.process(image)
-                .addOnSuccessListener { if (cont.isActive) cont.resume(it.text) }
+                .addOnSuccessListener { if (cont.isActive) cont.resume(extractStructuredText(it)) }
                 .addOnFailureListener { if (cont.isActive) cont.resume("") }
         }
+
+    private fun extractStructuredText(visionText: com.google.mlkit.vision.text.Text): String {
+        val lineBoxes = mutableListOf<LineBox>()
+        for (block in visionText.textBlocks) {
+            for (line in block.lines) {
+                val text = line.text.trim()
+                if (text.isNotBlank()) {
+                    val box = line.boundingBox
+                    val top = box?.top ?: 0
+                    val left = box?.left ?: 0
+                    val height = box?.height() ?: 20
+                    lineBoxes.add(LineBox(text, top, left, height))
+                }
+            }
+        }
+        if (lineBoxes.isEmpty()) return ""
+
+        val avgHeight = lineBoxes.map { it.height }.average().toInt().coerceAtLeast(10)
+        val rowThreshold = (avgHeight * 0.6).toInt().coerceAtLeast(12)
+
+        lineBoxes.sortBy { it.top }
+
+        val rows = mutableListOf<MutableList<LineBox>>()
+        for (box in lineBoxes) {
+            val matchingRow = rows.find { row ->
+                row.any { Math.abs(it.top - box.top) <= rowThreshold }
+            }
+            if (matchingRow != null) {
+                matchingRow.add(box)
+            } else {
+                rows.add(mutableListOf(box))
+            }
+        }
+
+        rows.sortBy { row -> row.minOf { it.top } }
+
+        val resultLines = mutableListOf<String>()
+        for (row in rows) {
+            row.sortBy { it.left }
+            for (box in row) {
+                resultLines.add(box.text)
+            }
+        }
+
+        return resultLines.joinToString("\n")
+    }
+
+    private data class LineBox(val text: String, val top: Int, val left: Int, val height: Int)
 
     fun close() {
         latin.close()

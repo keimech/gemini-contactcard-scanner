@@ -11,6 +11,7 @@ import kotlinx.parcelize.Parcelize
 @Parcelize
 data class ParsedResult(
     val personName: String,
+    val phoneticName: String = "",
     val companyName: String,
     val jobTitle: String,
     val phone: String,
@@ -31,6 +32,7 @@ data class ParsedResult(
 fun ParsedResult.toBusinessCard(): BusinessCard {
     return BusinessCard(
         personName = personName,
+        phoneticName = phoneticName,
         companyName = companyName,
         jobTitle = jobTitle,
         phone = phone,

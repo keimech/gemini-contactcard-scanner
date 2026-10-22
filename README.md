@@ -1,4 +1,4 @@
-# Gemini Contact Card Scanner
+# Gemini Contact Card Scanner (v1.4.0)
 
 [![Build](https://github.com/keimech/gemini-contactcard-scanner/actions/workflows/build.yml/badge.svg)](https://github.com/keimech/gemini-contactcard-scanner/actions/workflows/build.yml)
 

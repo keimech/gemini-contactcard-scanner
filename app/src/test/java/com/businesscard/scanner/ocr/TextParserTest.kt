@@ -72,6 +72,26 @@ class TextParserTest {
         assertEquals("スズキ", result.personName)
     }
 
+    @Test fun `Japanese name prioritized over English name when both are present`() {
+        val ocr = "Taro Yamada\n山田 太郎\n株式会社サンプル\ntaro@example.com"
+        val result = TextParser.parse(ocr)
+        assertEquals("山田 太郎", result.personName)
+        assertEquals("株式会社サンプル", result.companyName)
+    }
+
+    @Test fun `Japanese surname and given name split across lines are merged`() {
+        val ocr = "株式会社サンプル\n山田\n太郎\n代表取締役"
+        val result = TextParser.parse(ocr)
+        assertEquals("山田 太郎", result.personName)
+        assertEquals("株式会社サンプル", result.companyName)
+    }
+
+    @Test fun `Japanese name with wide gap normalized to single space`() {
+        val ocr = "株式会社サンプル\n山田        太郎\nCEO"
+        val result = TextParser.parse(ocr)
+        assertEquals("山田 太郎", result.personName)
+    }
+
     // ──── Latin name detection ────
 
     @Test fun `Latin first-last name detected`() {
@@ -118,6 +138,38 @@ class TextParserTest {
     @Test fun `website extracted`() {
         val result = TextParser.parse("John Smith\nwww.acme.com\njohn@acme.com")
         assertFalse(result.website.isBlank())
+    }
+
+    @Test fun `department name is not recognized as person name`() {
+        val ocr = "営業部\n山田 太郎\n株式会社サンプル\ntaro@example.com"
+        val result = TextParser.parse(ocr)
+        assertEquals("山田 太郎", result.personName)
+        assertNotEquals("営業部", result.personName)
+    }
+
+    @Test fun `email local part is not recognized as website`() {
+        val ocr = "山田 太郎\njohn.smith@example.com"
+        val result = TextParser.parse(ocr)
+        assertEquals("山田 太郎", result.personName)
+        assertTrue(result.website.isBlank())
+    }
+
+    @Test fun `Japanese address extracted`() {
+        val ocr = "山田 太郎\n〒100-0001 東京都千代田区千代田1-1\nサンプルビル5F"
+        val result = TextParser.parse(ocr)
+        assertTrue(result.address.contains("東京都千代田区"))
+    }
+
+    @Test fun `Furigana generated from Katakana reading`() {
+        val ocr = "山田 太郎\nヤマダ タロウ\n株式会社サンプル"
+        val result = TextParser.parse(ocr)
+        assertEquals("やまだ たろう", result.phoneticName)
+    }
+
+    @Test fun `Furigana generated from Romaji reading`() {
+        val ocr = "山田 太郎\nYamada Tarou\n株式会社サンプル"
+        val result = TextParser.parse(ocr)
+        assertEquals("やまだ たろう", result.phoneticName)
     }
 
     @Test fun `front and back texts combined`() {

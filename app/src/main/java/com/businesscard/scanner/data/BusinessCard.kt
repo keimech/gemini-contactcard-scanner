@@ -8,6 +8,7 @@ data class BusinessCard(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val personName: String = "",
+    val phoneticName: String = "",
     val companyName: String = "",
     val jobTitle: String = "",
     val phone: String = "",

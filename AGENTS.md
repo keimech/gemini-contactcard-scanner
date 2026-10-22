@@ -35,7 +35,7 @@ This document serves as a comprehensive operational and architectural guide for 
 app/src/main/java/com/businesscard/scanner/
 ├── App.kt                      # Application class (initializations)
 ├── data/                       # Data layer (Room DB, DAOs, Entities, Parsers)
-│   ├── AppDatabase.kt          # Room DB setup (Version 5) & Migrations
+│   ├── AppDatabase.kt          # Room DB setup (Version 6) & Migrations
 │   ├── BusinessCard.kt         # Primary entity for contact card
 │   ├── InteractionLog.kt       # Entity for calls, meetings, notes
 │   ├── BusinessCardDao.kt      # DAO for card queries, search, tags

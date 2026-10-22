@@ -7,6 +7,7 @@ object TextParser {
 
     data class ParsedContact(
         val personName: String = "",
+        val phoneticName: String = "",
         val companyName: String = "",
         val jobTitle: String = "",
         val phone: String = "",
@@ -114,6 +115,7 @@ object TextParser {
                 val fallback = parse(frontText, backText)
                 return ParsedContact(
                     personName = aiResult.personName.ifBlank { fallback.personName },
+                    phoneticName = aiResult.phoneticName.ifBlank { fallback.phoneticName },
                     companyName = aiResult.companyName.ifBlank { fallback.companyName },
                     jobTitle = aiResult.jobTitle.ifBlank { fallback.jobTitle },
                     phone = aiResult.phone.ifBlank { fallback.phone },
@@ -138,9 +140,11 @@ object TextParser {
         val jobTitle = extractJobTitle(lines, address)
         val allPhones = (phone.lines() + mobile.lines()).filter { it.isNotBlank() }
         val (personName, companyName) = extractNameAndCompany(lines, email, allPhones, website, jobTitle, address)
+        val phoneticName = extractPhoneticName(lines, personName)
 
         return ParsedContact(
             personName = personName,
+            phoneticName = phoneticName,
             companyName = companyName,
             jobTitle = jobTitle,
             phone = phone,
@@ -217,35 +221,106 @@ object TextParser {
     }
 
     private fun extractWebsite(text: String, email: String): String {
+        val emailLower = email.lowercase()
+        val emailLocalPart = if (email.contains("@")) email.substringBefore("@").lowercase() else ""
+        val emailDomain = if (email.contains("@")) email.substringAfter("@").lowercase() else ""
+
         val matcher = WEBSITE_PATTERN.matcher(text)
         while (matcher.find()) {
             val match = matcher.group()
-            if (!match.contains("@") && !match.equals(email, ignoreCase = true)) {
-                return match
+            val matchLower = match.lowercase()
+            if (matchLower.contains("@")) continue
+            if (matchLower == emailLower) continue
+            if (emailLocalPart.isNotBlank() && emailLocalPart.contains(matchLower)) continue
+            if (matchLower == emailDomain && !matchLower.startsWith("www.") && !match.contains("://")) continue
+            return match
+        }
+        return ""
+    }
+
+    private val JAPANESE_POSTAL_PATTERN = Pattern.compile("""〒?\s*\d{3}-\d{4}""")
+    private val PREFECTURES = listOf(
+        "東京都", "北海道", "京都府", "大阪府", "青森県", "岩手県", "宮城県", "秋田県", "山形県", "福島県",
+        "茨城県", "栃木県", "群馬県", "埼玉県", "千葉県", "神奈川県", "新潟県", "富山県", "石川県", "福井県",
+        "山梨県", "長野県", "岐阜県", "静岡県", "愛知県", "三重県", "滋賀県", "兵庫県", "奈良県", "和歌山県",
+        "鳥取県", "島根県", "岡山県", "広島県", "山口県", "徳島県", "香川県", "愛媛県", "高知県", "福岡県",
+        "佐賀県", "長崎県", "熊本県", "大分県", "宮崎県", "鹿児島県", "沖縄県"
+    )
+
+    private fun extractAddress(lines: List<String>): String {
+        val addressLines = mutableListOf<String>()
+
+        val addressPatterns = listOf(
+            Regex("""\d+\s+\w+.*(street|st|avenue|ave|road|rd|drive|dr|lane|ln|way|blvd|boulevard|court|ct|place|pl|suite|floor|fl)""", RegexOption.IGNORE_CASE),
+            Regex("""(po box|p\.o\. box)\s*\d+""", RegexOption.IGNORE_CASE),
+            Regex("""(nsw|vic|qld|wa|sa|tas|act|nt)\s*\d{4}""", RegexOption.IGNORE_CASE),
+            Regex("""[a-zA-Z]{3,}.*\b\d{4}\b|\b\d{4}\b.*[a-zA-Z]{3,}""")
+        )
+
+        for (i in lines.indices) {
+            val line = lines[i]
+            val digitRatio = line.count { it.isDigit() }.toFloat() / line.length.coerceAtLeast(1)
+            if (digitRatio > 0.5f) continue
+            if (PHONE_LABEL_PATTERN.matcher(line).find()) continue
+            if (PHONE_PATTERN.matcher(line).find()) continue
+
+            val hasPostalCode = JAPANESE_POSTAL_PATTERN.matcher(line).find()
+            val hasPrefecture = PREFECTURES.any { line.contains(it) }
+            val hasJpAddressKeywords = (line.contains("市") || line.contains("区") || line.contains("町") || line.contains("村")) &&
+                    (line.contains("丁目") || line.contains("番地") || line.contains("号") || line.contains("ビル") || line.contains("階") || line.contains("F") || line.contains("タワー") || line.contains("1-") || line.contains("2-") || line.contains("3-") || line.contains("4-") || line.contains("5-") || line.contains("6-") || line.contains("7-") || line.contains("8-") || line.contains("9-"))
+
+            if (hasPostalCode || hasPrefecture || hasJpAddressKeywords) {
+                addressLines.add(line)
+                if (i + 1 < lines.size) {
+                    val nextLine = lines[i + 1]
+                    val isNextBuildingOrFloor = nextLine.contains("ビル") || nextLine.contains("タワー") || nextLine.contains("階") || nextLine.contains("F") || nextLine.contains("号室") || nextLine.contains("館") || nextLine.contains("スクエア")
+                    if (isNextBuildingOrFloor && !PHONE_LABEL_PATTERN.matcher(nextLine).find() && !PHONE_PATTERN.matcher(nextLine).find()) {
+                        addressLines.add(nextLine)
+                    }
+                }
+                return addressLines.joinToString(" ")
+            }
+
+            for (pattern in addressPatterns) {
+                if (pattern.containsMatchIn(line)) return line
             }
         }
         return ""
     }
 
-    private fun extractAddress(lines: List<String>): String {
-        val addressPatterns = listOf(
-            Regex("""\d+\s+\w+.*(street|st|avenue|ave|road|rd|drive|dr|lane|ln|way|blvd|boulevard|court|ct|place|pl)""", RegexOption.IGNORE_CASE),
-            Regex("""(po box|p\.o\. box)\s*\d+""", RegexOption.IGNORE_CASE),
-            // Postcode must be preceded by a state abbreviation to avoid matching phone fragments
-            Regex("""(nsw|vic|qld|wa|sa|tas|act|nt)\s*\d{4}""", RegexOption.IGNORE_CASE),
-            // 4-digit postcode only when the line also contains a suburb/state word, not just digits
-            Regex("""[a-zA-Z]{3,}.*\b\d{4}\b|\b\d{4}\b.*[a-zA-Z]{3,}""")
-        )
+    private fun extractPhoneticName(lines: List<String>, personName: String): String {
+        if (personName.isBlank()) return ""
+
+        val hasKanaOnly = personName.all { c ->
+            c == ' ' || (c.code in 0x3040..0x309F) || (c.code in 0x30A0..0x30FF) || (c.code in 0xFF65..0xFF9F)
+        }
+        if (hasKanaOnly) {
+            return CjkUtils.katakanaToHiragana(personName)
+        }
+
         for (line in lines) {
-            // Skip lines that are phone numbers
-            val digitRatio = line.count { it.isDigit() }.toFloat() / line.length.coerceAtLeast(1)
-            if (digitRatio > 0.5f) continue
-            if (PHONE_LABEL_PATTERN.matcher(line).find()) continue
-            if (PHONE_PATTERN.matcher(line).find()) continue
-            for (pattern in addressPatterns) {
-                if (pattern.containsMatchIn(line)) return line
+            if (line == personName) continue
+            val trimmed = line.trim()
+            val isKanaReading = trimmed.length in 2..20 && trimmed.all { c ->
+                c == ' ' || (c.code in 0x3040..0x309F) || (c.code in 0x30A0..0x30FF)
+            }
+            if (isKanaReading && (trimmed.contains(" ") || trimmed.length in 2..8)) {
+                return CjkUtils.katakanaToHiragana(trimmed)
             }
         }
+
+        for (line in lines) {
+            if (line == personName) continue
+            val trimmed = line.trim()
+            val isRomajiName = trimmed.length in 3..25 &&
+                    trimmed.split(WHITESPACE).size in 1..3 &&
+                    trimmed.all { it.isLetter() || it == ' ' || it == '-' }
+            if (isRomajiName && !JOB_TITLE_KEYWORDS.any { trimmed.lowercase().contains(it) }) {
+                val converted = CjkUtils.romajiToHiragana(trimmed)
+                if (converted.isNotBlank()) return converted
+            }
+        }
+
         return ""
     }
 
@@ -271,35 +346,96 @@ object TextParser {
         val skipLines = (setOf(email, website, jobTitle, address) + phones)
             .filter { it.isNotBlank() }
 
-        val candidates = lines.filter { line ->
+        val rawCandidates = lines.filter { line ->
             skipLines.none { line.contains(it, ignoreCase = true) } &&
             !line.matches(DIGIT_RUN_PATTERN) &&
             line.length in 2..60
         }
 
+        val candidates = preprocessCjkCandidates(rawCandidates)
+
         var personName = ""
         var companyName = ""
 
+        val nonCompanyCandidates = mutableListOf<String>()
         for (line in candidates) {
             val lower = line.lowercase()
             if (companyName.isEmpty() && COMPANY_INDICATORS.any { lower.contains(it) }) {
                 companyName = line
-                continue
+            } else {
+                nonCompanyCandidates.add(line)
             }
-            if (personName.isEmpty() && looksLikeName(line)) {
-                personName = line
-                continue
+        }
+
+        val nameCandidates = nonCompanyCandidates.filter { looksLikeName(it) }
+
+        // Prefer CJK (Japanese/Chinese/Korean) name candidate if present over Latin name candidate
+        val cjkName = nameCandidates.firstOrNull { CjkUtils.containsCjk(it) }
+        if (cjkName != null) {
+            personName = cjkName
+        } else if (nameCandidates.isNotEmpty()) {
+            personName = nameCandidates.first()
+        }
+
+        if (companyName.isEmpty()) {
+            val remainingForCompany = nonCompanyCandidates.filter { line ->
+                line != personName &&
+                !looksLikeName(line) &&
+                line.length > 3
             }
-            if (companyName.isEmpty() && line.length > 3) {
-                companyName = line
-            }
+            companyName = remainingForCompany.firstOrNull() ?: ""
         }
 
         return Pair(personName, companyName)
     }
 
+    private fun preprocessCjkCandidates(lines: List<String>): List<String> {
+        val result = mutableListOf<String>()
+        var i = 0
+        while (i < lines.size) {
+            val current = lines[i].trim()
+            val currentCjkCount = current.count { CjkUtils.isCjk(it) }
+            val isCurrentPureCjk = currentCjkCount > 0 && current.all { it == ' ' || CjkUtils.isCjk(it) }
+
+            if (i + 1 < lines.size && isCurrentPureCjk && currentCjkCount in 1..3) {
+                val next = lines[i + 1].trim()
+                val nextCjkCount = next.count { CjkUtils.isCjk(it) }
+                val isNextPureCjk = nextCjkCount > 0 && next.all { it == ' ' || CjkUtils.isCjk(it) }
+                val combinedCjkCount = currentCjkCount + nextCjkCount
+
+                val isCompanyIndicator = COMPANY_INDICATORS.any {
+                    current.lowercase().contains(it) || next.lowercase().contains(it)
+                }
+
+                if (isNextPureCjk && nextCjkCount in 1..3 && combinedCjkCount in 2..6 && !isCompanyIndicator) {
+                    val normalizedMerged = "${current.replace(WHITESPACE, " ")} ${next.replace(WHITESPACE, " ")}".trim()
+                    result.add(normalizedMerged)
+                    i += 2
+                    continue
+                }
+            }
+
+            if (isCurrentPureCjk) {
+                result.add(current.replace(WHITESPACE, " "))
+            } else {
+                result.add(current)
+            }
+            i++
+        }
+        return result
+    }
+
+    private val DEPARTMENT_INDICATORS = listOf(
+        "部", "課", "係", "チーム", "室", "局", "本部", "支店", "営業所", "センター", "グループ", "事業部",
+        "department", "division", "team", "section", "branch", "group", "office", "unit"
+    )
+
     private fun looksLikeName(text: String): Boolean {
         val trimmed = text.trim()
+        val lower = trimmed.lowercase()
+        if (DEPARTMENT_INDICATORS.any { lower.contains(it) } || COMPANY_INDICATORS.any { lower.contains(it) }) {
+            return false
+        }
         // CJK names: checked first so the word-count guard below doesn't block names whose
         // characters OCR split into individual tokens (e.g. "张 三 李 四" → 4 words).
         val cjkCount = trimmed.count { CjkUtils.isCjk(it) }
