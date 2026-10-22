@@ -70,6 +70,10 @@ class EditContactActivity : AppCompatActivity() {
             binding.editNotes.setText(card.notes)
             setupTagChips(card)
 
+            if (intent.getBooleanExtra(EXTRA_AUTO_RESCAN, false)) {
+                binding.btnRescan.performClick()
+            }
+
             // Hide rescan button if no images were stored
             val hasImages = card.frontImagePath.isNotBlank() || card.backImagePath.isNotBlank()
             binding.btnRescan.visibility = if (hasImages) View.VISIBLE else View.GONE
@@ -78,28 +82,21 @@ class EditContactActivity : AppCompatActivity() {
                 lifecycleScope.launch {
                     setBusy(true)
                     try {
-                        val frontText = ocrHelper.recognizeFile(this@EditContactActivity, card.frontImagePath)
-                        val backText = ocrHelper.recognizeFile(this@EditContactActivity, card.backImagePath)
-
-                        if (frontText.isBlank() && backText.isBlank()) {
-                            Toast.makeText(this@EditContactActivity,
-                                getString(R.string.rescan_no_images), Toast.LENGTH_LONG).show()
-                            return@launch
+                        val updated = viewModel.rescanCard(this@EditContactActivity, card, ocrHelper, geminiParser)
+                        if (updated != null) {
+                            binding.editPersonName.setText(updated.personName)
+                            binding.editPhoneticName.setText(updated.phoneticName)
+                            binding.editCompanyName.setText(updated.companyName)
+                            binding.editJobTitle.setText(updated.jobTitle)
+                            binding.editPhone.setText(updated.phone)
+                            binding.editMobile.setText(updated.mobile)
+                            binding.editEmail.setText(updated.email)
+                            binding.editWebsite.setText(updated.website)
+                            binding.editAddress.setText(updated.address)
+                            Toast.makeText(this@EditContactActivity, getString(R.string.rescan_success), Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this@EditContactActivity, getString(R.string.rescan_no_images), Toast.LENGTH_LONG).show()
                         }
-
-                        val parsed = TextParser.parseSmart(frontText, backText, geminiParser)
-                        // Overwrite parsed fields; leave notes untouched (user-written)
-                        if (parsed.personName.isNotBlank())  binding.editPersonName.setText(parsed.personName)
-                        if (parsed.phoneticName.isNotBlank()) binding.editPhoneticName.setText(parsed.phoneticName)
-                        if (parsed.companyName.isNotBlank()) binding.editCompanyName.setText(parsed.companyName)
-                        if (parsed.jobTitle.isNotBlank())    binding.editJobTitle.setText(parsed.jobTitle)
-                        if (parsed.phone.isNotBlank())       binding.editPhone.setText(parsed.phone)
-                        if (parsed.mobile.isNotBlank())      binding.editMobile.setText(parsed.mobile)
-                        if (parsed.email.isNotBlank())       binding.editEmail.setText(parsed.email)
-                        if (parsed.website.isNotBlank())     binding.editWebsite.setText(parsed.website)
-                        if (parsed.address.isNotBlank())     binding.editAddress.setText(parsed.address)
-
-                        Toast.makeText(this@EditContactActivity, getString(R.string.rescan_success), Toast.LENGTH_SHORT).show()
                     } finally {
                         setBusy(false)
                     }
@@ -203,5 +200,6 @@ class EditContactActivity : AppCompatActivity() {
 
     companion object {
         const val EXTRA_CARD_ID = "extra_card_id"
+        const val EXTRA_AUTO_RESCAN = "extra_auto_rescan"
     }
 }

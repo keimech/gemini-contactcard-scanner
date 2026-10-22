@@ -149,4 +149,34 @@ class BusinessCardViewModel(application: Application) : AndroidViewModel(applica
     fun insertLog(log: InteractionLog) = viewModelScope.launch { repository.insertLog(log) }
 
     fun deleteLog(log: InteractionLog) = viewModelScope.launch { repository.deleteLog(log) }
+
+    suspend fun rescanCard(
+        context: android.content.Context,
+        card: BusinessCard,
+        ocrHelper: com.businesscard.scanner.ocr.OcrHelper,
+        geminiParser: com.businesscard.scanner.ocr.GeminiContactParser
+    ): BusinessCard? = withContext(Dispatchers.IO) {
+        if (card.frontImagePath.isBlank() && card.backImagePath.isBlank()) return@withContext null
+        val frontText = if (card.frontImagePath.isNotBlank()) ocrHelper.recognizeFile(context, card.frontImagePath) else ""
+        val backText = if (card.backImagePath.isNotBlank()) ocrHelper.recognizeFile(context, card.backImagePath) else ""
+
+        if (frontText.isBlank() && backText.isBlank()) return@withContext null
+
+        val parsed = com.businesscard.scanner.ocr.TextParser.parseSmart(frontText, backText, geminiParser)
+
+        val updated = card.copy(
+            personName   = parsed.personName.ifBlank { card.personName },
+            phoneticName = parsed.phoneticName.ifBlank { card.phoneticName },
+            companyName  = parsed.companyName.ifBlank { card.companyName },
+            jobTitle     = parsed.jobTitle.ifBlank { card.jobTitle },
+            phone        = parsed.phone.ifBlank { card.phone },
+            mobile       = parsed.mobile.ifBlank { card.mobile },
+            email        = parsed.email.ifBlank { card.email },
+            website      = parsed.website.ifBlank { card.website },
+            address      = parsed.address.ifBlank { card.address },
+            rawTextFront = frontText.ifBlank { card.rawTextFront },
+            rawTextBack  = backText.ifBlank { card.rawTextBack }
+        )
+        updated
+    }
 }

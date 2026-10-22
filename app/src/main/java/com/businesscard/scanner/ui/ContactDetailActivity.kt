@@ -376,6 +376,26 @@ class ContactDetailActivity : AppCompatActivity() {
                 )
                 true
             }
+            R.id.action_rescan -> {
+                val c = card ?: return false
+                if (c.frontImagePath.isBlank() && c.backImagePath.isBlank()) {
+                    Toast.makeText(this, getString(R.string.rescan_no_images), Toast.LENGTH_LONG).show()
+                    return true
+                }
+                AlertDialog.Builder(this)
+                    .setTitle(R.string.rescan_dialog_title)
+                    .setMessage(R.string.rescan_dialog_message)
+                    .setPositiveButton(R.string.btn_rescan) { _, _ ->
+                        startActivity(
+                            Intent(this, EditContactActivity::class.java)
+                                .putExtra(EditContactActivity.EXTRA_CARD_ID, c.id)
+                                .putExtra(EditContactActivity.EXTRA_AUTO_RESCAN, true)
+                        )
+                    }
+                    .setNegativeButton(R.string.cancel, null)
+                    .show()
+                true
+            }
             R.id.action_qr_code -> {
                 card?.let { c -> lifecycleScope.launch { showQrCode(c) } }
                 true

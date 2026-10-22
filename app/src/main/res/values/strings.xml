@@ -106,6 +106,9 @@
     <!-- ContactDetailActivity -->
     <string name="no_name_to_search">No name or company to search</string>
     <string name="interaction_note_hint">Optional note…</string>
+    <string name="action_rescan">Rescan from Images</string>
+    <string name="rescan_dialog_title">Rescan from Images</string>
+    <string name="rescan_dialog_message">Re-parse front and back card images to update contact details? Notes and custom tags will be preserved.</string>
 
     <!-- EditContactActivity -->
     <string name="add_tag_title">Add Tag</string>
