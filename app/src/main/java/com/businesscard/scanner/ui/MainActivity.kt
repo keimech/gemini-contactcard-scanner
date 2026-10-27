@@ -340,6 +340,10 @@ class MainActivity : AppCompatActivity() {
                 startActivity(Intent(this, MergeDuplicatesActivity::class.java))
                 true
             }
+            R.id.action_batch_reparse -> {
+                showBatchReparseDialog()
+                true
+            }
             R.id.action_export  -> { exportCsv(); true }
             R.id.action_backup  -> { backupZip(); true }
             R.id.action_restore -> { pickBackupFile.launch("*/*"); true }
@@ -348,6 +352,64 @@ class MainActivity : AppCompatActivity() {
             R.id.theme_light  -> { setNightMode(AppCompatDelegate.MODE_NIGHT_NO); true }
             R.id.theme_dark   -> { setNightMode(AppCompatDelegate.MODE_NIGHT_YES); true }
             else -> super.onOptionsItemSelected(item)
+        }
+    }
+
+    private fun showBatchReparseDialog() {
+        val options = arrayOf(
+            getString(R.string.reparse_mode_low_accuracy),
+            getString(R.string.reparse_mode_all)
+        )
+        var selectedMode = 0
+        AlertDialog.Builder(this)
+            .setTitle(R.string.reparse_dialog_title)
+            .setMessage(R.string.reparse_dialog_message)
+            .setSingleChoiceItems(options, 0) { _, which ->
+                selectedMode = which
+            }
+            .setPositiveButton(R.string.add) { _, _ ->
+                val lowAccuracyOnly = (selectedMode == 0)
+                performBatchReparse(lowAccuracyOnly)
+            }
+            .setNegativeButton(R.string.cancel, null)
+            .show()
+    }
+
+    private fun performBatchReparse(lowAccuracyOnly: Boolean) {
+        val progressDialog = AlertDialog.Builder(this)
+            .setTitle(R.string.reparse_dialog_title)
+            .setMessage(getString(R.string.reparse_progress, 0, 0))
+            .setCancelable(false)
+            .create()
+
+        progressDialog.show()
+
+        lifecycleScope.launch {
+            val ocrHelper = com.businesscard.scanner.ocr.OcrHelper()
+            val geminiParser = com.businesscard.scanner.ocr.GeminiContactParser()
+            try {
+                geminiParser.warmup()
+                val count = viewModel.batchReparseCards(
+                    this@MainActivity,
+                    lowAccuracyOnly,
+                    ocrHelper,
+                    geminiParser
+                ) { current, total ->
+                    progressDialog.setMessage(getString(R.string.reparse_progress, current, total))
+                }
+                progressDialog.dismiss()
+                if (count > 0) {
+                    Toast.makeText(this@MainActivity, getString(R.string.reparse_completed, count), Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this@MainActivity, getString(R.string.reparse_no_eligible), Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                progressDialog.dismiss()
+                Toast.makeText(this@MainActivity, "Re-parse failed: ${e.message}", Toast.LENGTH_LONG).show()
+            } finally {
+                ocrHelper.close()
+                geminiParser.close()
+            }
         }
     }
 

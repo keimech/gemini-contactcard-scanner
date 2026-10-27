@@ -84,12 +84,16 @@ app/src/main/java/com/businesscard/scanner/
 ### Scanning & Camera Features (`ScanActivity.kt`)
 - **CameraX Enhancements:** Uses `CAPTURE_MODE_MAXIMIZE_QUALITY` and tap-to-focus (`FocusMeteringAction`).
 - **System Camera Integration:** Supports launching external system camera app (`MediaStore.ACTION_IMAGE_CAPTURE`) for device-native camera processing.
-- **Continuous Batch Scan:** Non-blocking continuous capture mode backed by a background Coroutine queue that performs OCR + Gemini Nano extraction + Room DB insertion asynchronously.
+- **Continuous Batch Scan & Sequential Queue:** Non-blocking continuous capture mode backed by a background FIFO `Channel` queue (`ScanActivity`) that performs smart adaptive OCR + Gemini Nano extraction strictly one card at a time in order.
+- **Smart Adaptive Dual-Pass OCR (`OcrHelper.kt`)**: Combines high-res raw image recognition with conditional gamma correction and edge sharpening for glare/shadow recovery without speed penalty for normal cards.
 - **Extracted Details Preview:** Instantly renders a card preview panel showing classified details (Name, Company, Title, Phone, Email, Address) upon scan.
 
 ### Offline Storage & Privacy
-- **Database:** SQLite DB located at `/data/data/com.businesscard.scanner/databases/business_card_database`.
+- **Database:** SQLite DB located at `/data/data/com.businesscard.scanner/databases/business_card_database` (Version 6).
 - **Card Images:** Stored as JPGs in internal private storage `context.filesDir` (`/data/data/com.businesscard.scanner/files/`). Never saved to public gallery unless explicitly exported.
+- **Rescan from Stored Images:** Allows re-parsing already-loaded / stored business card images (`frontImagePath` / `backImagePath`) via `BusinessCardViewModel` from both `ContactDetailActivity` and `EditContactActivity` to update contact details while preserving user notes, manual tags, and interaction logs.
+- **Batch Audit & Re-parse Cards:** Allows users to trigger an automatic audit and batch re-parse of registered cards using the latest OCR & AI algorithms (`BusinessCardViewModel.batchReparseCards`), updating contact details while strictly preserving user notes, manual tags, and interaction history.
+- **Handwritten Notes & Date Extraction:** Automatically detects handwritten notes, marginalia, and dates on business cards during parsing (`GeminiContactParser` & `TextParser`), populating contact notes and automatically inserting an initial `InteractionLog` entry upon saving.
 - **Backups:** Full ZIP backups bundle the SQLite DB entries, original card photos, and raw OCR text.
 
 ---

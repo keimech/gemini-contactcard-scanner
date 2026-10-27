@@ -14,7 +14,9 @@ object TextParser {
         val mobile: String = "",
         val email: String = "",
         val website: String = "",
-        val address: String = ""
+        val address: String = "",
+        val handwrittenNote: String = "",
+        val handwrittenDate: String = ""
     )
 
     // Matches phone numbers with optional country code, parentheses, separators
@@ -122,7 +124,9 @@ object TextParser {
                     mobile = aiResult.mobile.ifBlank { fallback.mobile },
                     email = aiResult.email.ifBlank { fallback.email },
                     website = aiResult.website.ifBlank { fallback.website },
-                    address = aiResult.address.ifBlank { fallback.address }
+                    address = aiResult.address.ifBlank { fallback.address },
+                    handwrittenNote = aiResult.handwrittenNote.ifBlank { fallback.handwrittenNote },
+                    handwrittenDate = aiResult.handwrittenDate.ifBlank { fallback.handwrittenDate }
                 )
             }
         }
@@ -141,6 +145,8 @@ object TextParser {
         val allPhones = (phone.lines() + mobile.lines()).filter { it.isNotBlank() }
         val (personName, companyName) = extractNameAndCompany(lines, email, allPhones, website, jobTitle, address)
         val phoneticName = extractPhoneticName(lines, personName)
+        val handwrittenDate = extractHandwrittenDate(lines)
+        val handwrittenNote = extractHandwrittenNote(lines, setOf(email, website, address, jobTitle, personName, companyName, phone, mobile))
 
         return ParsedContact(
             personName = personName,
@@ -151,7 +157,9 @@ object TextParser {
             mobile = mobile,
             email = email,
             website = website,
-            address = address
+            address = address,
+            handwrittenNote = handwrittenNote,
+            handwrittenDate = handwrittenDate
         )
     }
 
@@ -286,6 +294,37 @@ object TextParser {
             }
         }
         return ""
+    }
+
+    private val DATE_PATTERN = Pattern.compile(
+        """(\d{4}[-/年]\d{1,2}[-/月]\d{1,2}日?|\d{1,2}/\d{1,2}(?:/\d{2,4})?)"""
+    )
+
+    private fun extractHandwrittenDate(lines: List<String>): String {
+        for (line in lines) {
+            val matcher = DATE_PATTERN.matcher(line)
+            if (matcher.find()) {
+                return matcher.group(1) ?: line
+            }
+        }
+        return ""
+    }
+
+    private fun extractHandwrittenNote(lines: List<String>, claimedLines: Set<String>): String {
+        val notes = mutableListOf<String>()
+        for (line in lines) {
+            val trimmed = line.trim()
+            if (trimmed.isBlank()) continue
+            val isClaimed = claimedLines.any { it.isNotBlank() && trimmed.contains(it, ignoreCase = true) }
+            val isPhone = PHONE_PATTERN.matcher(trimmed).find() || PHONE_LABEL_PATTERN.matcher(trimmed).find()
+            val isEmail = EMAIL_PATTERN.matcher(trimmed).find()
+            val isWebsite = WEBSITE_PATTERN.matcher(trimmed).find()
+
+            if (!isClaimed && !isPhone && !isEmail && !isWebsite && trimmed.length > 5) {
+                notes.add(trimmed)
+            }
+        }
+        return notes.joinToString("\n")
     }
 
     private fun extractPhoneticName(lines: List<String>, personName: String): String {

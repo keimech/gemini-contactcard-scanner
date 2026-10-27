@@ -23,7 +23,9 @@ data class ParsedResult(
     val rawTextBack: String,
     val frontImagePath: String,
     val backImagePath: String,
-    val tags: String = ""
+    val tags: String = "",
+    val handwrittenNote: String = "",
+    val handwrittenDate: String = ""
 ) : Parcelable
 
 /**
@@ -44,6 +46,7 @@ fun ParsedResult.toBusinessCard(): BusinessCard {
         rawTextBack = rawTextBack,
         frontImagePath = frontImagePath,
         backImagePath = backImagePath,
-        tags = tags
+        tags = tags,
+        notes = handwrittenNote
     )
 }

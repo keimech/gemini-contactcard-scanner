@@ -30,11 +30,20 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
         _parsedItems.value = items.toList()
     }
 
-    fun saveSingleCard(card: BusinessCard, onComplete: (Boolean) -> Unit) {
+    fun saveSingleCard(card: BusinessCard, handwrittenNote: String = "", onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    repository.insert(card)
+                    val id = repository.insert(card)
+                    if (handwrittenNote.isNotBlank()) {
+                        repository.insertLog(
+                            com.businesscard.scanner.data.InteractionLog(
+                                cardId = id,
+                                type = "Note",
+                                note = handwrittenNote
+                            )
+                        )
+                    }
                 }
                 onComplete(true)
             } catch (e: Exception) {
@@ -49,7 +58,17 @@ class ReviewViewModel(application: Application) : AndroidViewModel(application) 
             withContext(Dispatchers.IO) {
                 for (item in remaining) {
                     try {
-                        repository.insert(item.toBusinessCard())
+                        val card = item.toBusinessCard()
+                        val id = repository.insert(card)
+                        if (item.handwrittenNote.isNotBlank()) {
+                            repository.insertLog(
+                                com.businesscard.scanner.data.InteractionLog(
+                                    cardId = id,
+                                    type = "Note",
+                                    note = item.handwrittenNote
+                                )
+                            )
+                        }
                         savedCount++
                     } catch (_: Exception) {}
                 }

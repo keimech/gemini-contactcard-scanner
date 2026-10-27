@@ -229,4 +229,14 @@
     <string name="btn_save_all_remaining">残りをすべて登録</string>
     <string name="review_completed_toast">%1$d 件の連絡先を保存しました</string>
     <string name="no_cards_to_review">スキャンされた名刺がありません</string>
+
+    <!-- Batch Re-parse / Audit -->
+    <string name="action_batch_reparse">Auto-Audit &amp; Re-parse Cards</string>
+    <string name="reparse_dialog_title">Auto-Audit &amp; Re-parse Cards</string>
+    <string name="reparse_dialog_message">Select contacts to re-parse using the latest OCR &amp; AI algorithms. User notes and custom tags will be preserved.</string>
+    <string name="reparse_mode_low_accuracy">Low accuracy / incomplete cards only</string>
+    <string name="reparse_mode_all">All cards with stored images</string>
+    <string name="reparse_progress">Re-parsing cards… %1$d / %2$d</string>
+    <string name="reparse_completed">Batch re-parse completed: %d cards updated!</string>
+    <string name="reparse_no_eligible">No eligible cards found to re-parse</string>
 </resources>

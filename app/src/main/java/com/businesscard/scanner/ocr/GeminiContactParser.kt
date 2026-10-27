@@ -38,7 +38,13 @@ data class GenerableParsedContact(
     val website: String = "",
 
     @Guide(description = "Physical postal address or office location (e.g. 〒100-0001 東京都千代田区1-1-1 サンプルビル5F). Include postal code, prefecture, city, street, and building/floor name if available.")
-    val address: String = ""
+    val address: String = "",
+
+    @Guide(description = "Any handwritten notes, marginalia, or personal annotations written on the card (e.g. met at conference, follow up next week)")
+    val handwrittenNote: String = "",
+
+    @Guide(description = "Any handwritten date or meeting date written on the card (e.g. 2024-10-15, 2024年10月15日)")
+    val handwrittenDate: String = ""
 )
 
 class GeminiContactParser {
@@ -143,7 +149,9 @@ class GeminiContactParser {
                     mobile = candidate.mobile,
                     email = candidate.email,
                     website = candidate.website,
-                    address = candidate.address
+                    address = candidate.address,
+                    handwrittenNote = candidate.handwrittenNote,
+                    handwrittenDate = candidate.handwrittenDate
                 )
             } else {
                 Log.w(TAG, "Gemini Nano response candidate was null")

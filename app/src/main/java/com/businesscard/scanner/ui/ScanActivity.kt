@@ -19,6 +19,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -56,6 +57,9 @@ class ScanActivity : AppCompatActivity() {
 
     private val ocrHelper = OcrHelper()
     private val geminiParser = GeminiContactParser()
+
+    private val ocrQueue = Channel<String>(Channel.UNLIMITED)
+    private var queueProcessorJob: Job? = null
 
     // Thread-safe batch management
     private var capturedCount = 0
@@ -110,6 +114,12 @@ class ScanActivity : AppCompatActivity() {
         lifecycleScope.launch {
             geminiParser.downloadIfNeeded()
             geminiParser.warmup()
+        }
+
+        queueProcessorJob = lifecycleScope.launch {
+            for (imagePath in ocrQueue) {
+                processCapturedImageInBackground(imagePath)
+            }
         }
     }
 
@@ -252,13 +262,10 @@ class ScanActivity : AppCompatActivity() {
                         Toast.makeText(this@ScanActivity, getString(R.string.next_card_ready), Toast.LENGTH_SHORT).show()
                     }
 
-                    val parseJob = lifecycleScope.launch {
-                        processCapturedImageInBackground(file.absolutePath)
-                    }
-                    pendingParseJobs.add(parseJob)
+                    ocrQueue.trySend(file.absolutePath)
                 }
                 override fun onError(exc: ImageCaptureException) {
-                    Toast.makeText(this@ScanActivity, getString(R.string.capture_failed, exc.message), Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@ScanActivity, getString(R.string.capture_failed, exc.message), Toast.LENGTH_LONG).show()
                 }
             }
         )
@@ -280,12 +287,9 @@ class ScanActivity : AppCompatActivity() {
                 capturedCount++
                 updateBatchStatusUI()
                 binding.btnReviewBatch.visibility = View.VISIBLE
-                val parseJob = lifecycleScope.launch {
-                    processCapturedImageInBackground(destFile.absolutePath)
-                }
-                pendingParseJobs.add(parseJob)
+                ocrQueue.trySend(destFile.absolutePath)
             } catch (e: Exception) {
-                Toast.makeText(this@ScanActivity, "Could not read image: ${e.message}", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@ScanActivity, "Could not read image: ${e.message}", Toast.LENGTH_LONG).show()
             } finally {
                 setBusy(false)
             }
@@ -294,10 +298,7 @@ class ScanActivity : AppCompatActivity() {
 
     private suspend fun processCapturedImageInBackground(imagePath: String) {
         try {
-            val image = withContext(Dispatchers.IO) {
-                InputImage.fromFilePath(this@ScanActivity, Uri.fromFile(File(imagePath)))
-            }
-            val text = ocrHelper.recognize(image)
+            val text = ocrHelper.recognizeFile(this@ScanActivity, imagePath)
             if (text.isNotBlank()) {
                 val currentFrontText = if (!isScanningBack) text else frontText
                 val currentBackText = if (isScanningBack) text else backText
@@ -309,6 +310,7 @@ class ScanActivity : AppCompatActivity() {
 
                 val result = ParsedResult(
                     personName = parsed.personName,
+                    phoneticName = parsed.phoneticName,
                     companyName = parsed.companyName,
                     jobTitle = parsed.jobTitle,
                     phone = parsed.phone,
@@ -320,7 +322,9 @@ class ScanActivity : AppCompatActivity() {
                     rawTextBack = currentBackText,
                     frontImagePath = currentFrontPath,
                     backImagePath = currentBackPath,
-                    tags = initialTags
+                    tags = initialTags,
+                    handwrittenNote = parsed.handwrittenNote,
+                    handwrittenDate = parsed.handwrittenDate
                 )
                 batchResults.add(result)
             }
@@ -404,6 +408,8 @@ class ScanActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        queueProcessorJob?.cancel()
+        ocrQueue.close()
         ocrHelper.close()
         geminiParser.close()
     }

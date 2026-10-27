@@ -179,4 +179,43 @@ class BusinessCardViewModel(application: Application) : AndroidViewModel(applica
         )
         updated
     }
+
+    suspend fun batchReparseCards(
+        context: android.content.Context,
+        lowAccuracyOnly: Boolean,
+        ocrHelper: com.businesscard.scanner.ocr.OcrHelper,
+        geminiParser: com.businesscard.scanner.ocr.GeminiContactParser,
+        onProgress: (Int, Int) -> Unit
+    ): Int = withContext(Dispatchers.IO) {
+        val allCards = repository.getAllCardsList()
+        val eligible = allCards.filter { card ->
+            val hasImages = card.frontImagePath.isNotBlank() || card.backImagePath.isNotBlank()
+            if (!hasImages) return@filter false
+            if (!lowAccuracyOnly) return@filter true
+
+            val missingName = card.personName.isBlank()
+            val missingFurigana = card.phoneticName.isBlank()
+            val missingCompany = card.companyName.isBlank()
+            val missingContact = card.phone.isBlank() && card.mobile.isBlank() && card.email.isBlank()
+            missingName || missingFurigana || missingCompany || missingContact
+        }
+
+        if (eligible.isEmpty()) {
+            withContext(Dispatchers.Main) { onProgress(0, 0) }
+            return@withContext 0
+        }
+
+        var updatedCount = 0
+        eligible.forEachIndexed { index, card ->
+            withContext(Dispatchers.Main) {
+                onProgress(index + 1, eligible.size)
+            }
+            val rescanResult = rescanCard(context, card, ocrHelper, geminiParser)
+            if (rescanResult != null) {
+                repository.update(rescanResult)
+                updatedCount++
+            }
+        }
+        updatedCount
+    }
 }

@@ -1,33 +1,57 @@
-# Implementation Plan - Update Contact Details Using Stored Card Images
+# Implementation Plan - Batch Audit & Re-parse Registered Cards
 
-Add and enhance the ability to update contact registration details using already-loaded / stored business card images (front & back) directly from `ContactDetailActivity` and `EditContactActivity`.
+Implement a feature to crawl registered business cards in the database, identify contacts parsed with older low-accuracy algorithms, and batch re-parse them using the latest OCR & AI algorithms.
 
 ## User Review Required
 
-> [!NOTE]
-> `EditContactActivity` already includes a "Rescan from Images" button (`btnRescan`), but `ContactDetailActivity` does not provide direct access to re-run OCR and update details from stored images without navigating to the edit screen first.
+> [!IMPORTANT]
+> **Data Safety Guarantee**: Batch re-parsing will strictly update OCR-derived fields (`personName`, `phoneticName`, `companyName`, `jobTitle`, `phone`, `mobile`, `email`, `website`, `address`, `rawTextFront`, `rawTextBack`) while **preserving** user notes, manual tags, interaction history, and creation timestamps.
 
-- **Proposed Enhancement**: Add a "Rescan from Images" menu action in `ContactDetailActivity` and ensure users can re-parse and update fields seamlessly from stored card images.
+- **Two Re-parse Scope Options**:
+  1. **Low Accuracy / Incomplete Cards Only**: Automatically diagnoses cards missing `phoneticName`, `personName`, `companyName`, or contact info.
+  2. **All Cards with Stored Images**: Re-parses every card that has a valid front/back image file stored locally.
 
 ## Open Questions
 
-- None. The stored card image paths (`frontImagePath` and `backImagePath`) are already persisted in the Room database (`BusinessCard` entity).
+- None.
 
 ## Proposed Changes
 
+### ViewModel & Data Layer
+
+#### [MODIFY] [BusinessCardViewModel.kt](file:///C:/Users/amaga/Desktop/AndroidProject/gemini-contactcard-scanner/app/src/main/java/com/businesscard/scanner/ui/BusinessCardViewModel.kt)
+- Add `batchReparseCards(context: Context, lowAccuracyOnly: Boolean, onProgress: (Int, Int) -> Unit): Int` suspend function.
+- Diagnoses eligible cards in the database (`repository.getAllCardsList()`).
+- Sequentially processes each eligible card through `rescanCard(...)` with the latest `OcrHelper` and `TextParser.parseSmart` / `GeminiContactParser`.
+- Reports real-time progress (`processedIndex`, `totalCount`) back to the UI.
+
 ### UI Presentation Layer
 
-#### [MODIFY] [menu_detail.xml](file:///C:/Users/amaga/Desktop/AndroidProject/gemini-contactcard-scanner/app/src/main/res/menu/menu_detail.xml)
-- Add menu item `action_rescan` ("Rescan from Images") to `ContactDetailActivity` action bar.
+#### [MODIFY] [menu_main.xml](file:///C:/Users/amaga/Desktop/AndroidProject/gemini-contactcard-scanner/app/src/main/res/menu/menu_main.xml)
+- Add overflow menu item `action_batch_reparse` ("Batch Re-parse Cards" / "登録データの自動診断・一括再解析").
 
-#### [MODIFY] [ContactDetailActivity.kt](file:///C:/Users/amaga/Desktop/AndroidProject/gemini-contactcard-scanner/app/src/main/java/com/businesscard/scanner/ui/ContactDetailActivity.kt)
-- Handle `action_rescan` menu click.
-- Load stored card images (`frontImagePath`, `backImagePath`), run `OcrHelper` and `TextParser.parseSmart` / `GeminiContactParser`, update the card entity in Room database, and reload the contact details view.
+#### [MODIFY] [MainActivity.kt](file:///C:/Users/amaga/Desktop/AndroidProject/gemini-contactcard-scanner/app/src/main/java/com/businesscard/scanner/ui/MainActivity.kt)
+- Handle `action_batch_reparse` menu click.
+- Show an option dialog allowing the user to select between "Low Accuracy Only" and "All Saved Image Cards".
+- Display a modal progress dialog during batch re-parsing (showing current progress e.g. `再解析中... 3 / 15 件`).
+- Show a completion dialog/toast summarizing the number of updated contacts.
+
+#### [MODIFY] [strings.xml](file:///C:/Users/amaga/Desktop/AndroidProject/gemini-contactcard-scanner/app/src/main/res/values/strings.xml)
+- Add string resources for the batch re-parse menu, selection dialog, progress messages, and completion summary (in English and Japanese).
+
+### Documentation
+
+#### [MODIFY] [AGENTS.md](file:///C:/Users/amaga/Desktop/AndroidProject/gemini-contactcard-scanner/AGENTS.md)
+- Update `AGENTS.md` to document the batch audit and re-parsing feature.
 
 ## Verification Plan
 
 ### Automated Tests
 - Run unit tests: `./gradlew :app:testDebugUnitTest`
+- Add unit tests for low-accuracy card audit filtering in `BusinessCardViewModelTest` or `TextParserTest`.
 
 ### Manual Verification
-- Deploy app to emulator/device, open a contact with stored card images, tap "Rescan from Images" in the menu, and verify contact details are successfully updated.
+- Deploy to emulator/device.
+- Trigger "Batch Re-parse Cards" from `MainActivity` overflow menu.
+- Verify progress dialog displays accurately during processing.
+- Verify that older contact cards are updated with new fields (including `phoneticName`) while preserving user notes and manual tags.

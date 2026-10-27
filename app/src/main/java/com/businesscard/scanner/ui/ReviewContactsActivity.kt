@@ -53,7 +53,8 @@ class ReviewContactsActivity : AppCompatActivity() {
     private fun setupAdapter(results: List<ParsedResult>) {
         adapter = ReviewAdapter(
             onSaveClick = { card, position ->
-                viewModel.saveSingleCard(card) { success ->
+                val item = adapter.getItem(position)
+                viewModel.saveSingleCard(card, item?.handwrittenNote.orEmpty()) { success ->
                     if (success) {
                         savedCount++
                         Toast.makeText(this, getString(R.string.contact_saved), Toast.LENGTH_SHORT).show()

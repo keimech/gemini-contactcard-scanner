@@ -25,6 +25,17 @@ class OcrHelper {
         if (path.isBlank()) return ""
         val file = File(path)
         if (!file.exists()) return ""
+        val bitmap = try {
+            android.graphics.BitmapFactory.decodeFile(file.absolutePath)
+        } catch (_: Exception) {
+            null
+        }
+        if (bitmap != null) {
+            val image = InputImage.fromBitmap(bitmap, 0)
+            val res = recognizeWithBitmap(image, bitmap)
+            bitmap.recycle()
+            return res
+        }
         val image = try {
             InputImage.fromFilePath(context, Uri.fromFile(file))
         } catch (e: Exception) {
@@ -33,12 +44,74 @@ class OcrHelper {
         return recognize(image)
     }
 
+    suspend fun recognizeWithBitmap(image: InputImage, bitmap: android.graphics.Bitmap): String = coroutineScope {
+        val latinText = async { run(latin, image) }
+        val chineseText = async { run(chinese, image) }
+        val japaneseText = async { run(japanese, image) }
+        val koreanText = async { run(korean, image) }
+        val pass1 = smartMerge(latinText.await(), chineseText.await(), japaneseText.await(), koreanText.await())
+
+        val lineCount = pass1.lines().count { it.isNotBlank() }
+        val hasContactInfo = pass1.contains("@") || pass1.any { it.isDigit() }
+        if (lineCount >= 3 || hasContactInfo) {
+            return@coroutineScope pass1
+        }
+
+        val preprocessed = try {
+            preprocessBitmapForGlare(bitmap)
+        } catch (_: Exception) {
+            null
+        }
+
+        if (preprocessed != null) {
+            val preprocessedImage = InputImage.fromBitmap(preprocessed, 0)
+            val l2 = async { run(latin, preprocessedImage) }
+            val c2 = async { run(chinese, preprocessedImage) }
+            val j2 = async { run(japanese, preprocessedImage) }
+            val k2 = async { run(korean, preprocessedImage) }
+            val pass2 = smartMerge(l2.await(), c2.await(), j2.await(), k2.await())
+            preprocessed.recycle()
+
+            val merged = LinkedHashSet<String>()
+            pass1.lines().map { it.trim() }.filter { it.isNotBlank() }.forEach { merged.add(it) }
+            pass2.lines().map { it.trim() }.filter { it.isNotBlank() }.forEach { merged.add(it) }
+            return@coroutineScope merged.joinToString("\n")
+        }
+
+        pass1
+    }
+
     suspend fun recognize(image: InputImage): String = coroutineScope {
         val latinText = async { run(latin, image) }
         val chineseText = async { run(chinese, image) }
         val japaneseText = async { run(japanese, image) }
         val koreanText = async { run(korean, image) }
         smartMerge(latinText.await(), chineseText.await(), japaneseText.await(), koreanText.await())
+    }
+
+    private fun preprocessBitmapForGlare(bitmap: android.graphics.Bitmap): android.graphics.Bitmap {
+        val width = bitmap.width
+        val height = bitmap.height
+        val output = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.ARGB_8888)
+        val canvas = android.graphics.Canvas(output)
+        val paint = android.graphics.Paint()
+
+        val cm = android.graphics.ColorMatrix()
+        cm.setSaturation(0f)
+
+        val scale = 1.35f
+        val translate = (-0.5f * scale + 0.5f) * 255f
+        val contrastMatrix = android.graphics.ColorMatrix(floatArrayOf(
+            scale, 0f, 0f, 0f, translate,
+            0f, scale, 0f, 0f, translate,
+            0f, 0f, scale, 0f, translate,
+            0f, 0f, 0f, 1f, 0f
+        ))
+        cm.postConcat(contrastMatrix)
+
+        paint.colorFilter = android.graphics.ColorMatrixColorFilter(cm)
+        canvas.drawBitmap(bitmap, 0f, 0f, paint)
+        return output
     }
 
     private fun smartMerge(

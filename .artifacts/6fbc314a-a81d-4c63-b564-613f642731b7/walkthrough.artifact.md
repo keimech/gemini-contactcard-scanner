@@ -1,23 +1,30 @@
-# Walkthrough - Update Contact Details Using Stored Card Images
+# Walkthrough - Batch Audit & Re-parse Registered Cards
 
-Implemented and verified the ability to update contact registration details using already-loaded / stored business card images (`frontImagePath` and `backImagePath`) from `ContactDetailActivity` and `EditContactActivity` with full user review before saving.
+Implemented and verified a feature to crawl registered business cards in the database, automatically diagnose low-accuracy / incomplete contacts, and batch re-parse them using the latest OCR & AI algorithms.
 
 ## Changes
 
-### Data & Logic Layer
-- **`BusinessCardViewModel.kt`**: Added shared `rescanCard(...)` suspend function to handle loading stored card images, running `OcrHelper` and `TextParser.parseSmart` / `GeminiContactParser`, and returning the updated card object for user review (without silent background DB overwrites).
+### ViewModel & Data Layer
+- **`BusinessCardViewModel.kt`**: Implemented `batchReparseCards(...)` suspend function:
+  - Queries all registered cards in the database (`repository.getAllCardsList()`).
+  - Filters cards based on selection mode ("Low Accuracy / Incomplete Cards Only" vs "All Cards with Stored Images").
+  - Sequentially re-parses eligible cards via `rescanCard(...)` using the latest `OcrHelper` and `TextParser.parseSmart` / `GeminiContactParser`.
+  - Preserves user notes, manual tags, interaction history, and creation timestamps.
+  - Reports real-time progress (`current`, `total`) back to the UI.
 
 ### UI Presentation Layer
-- **`menu_detail.xml`**: Added `action_rescan` menu item ("Rescan from Images") to `ContactDetailActivity`.
-- **`ContactDetailActivity.kt`**: Implemented `action_rescan` handling with a confirmation dialog that launches `EditContactActivity` with auto-rescan enabled.
-- **`EditContactActivity.kt`**: Refactored to utilize shared `viewModel.rescanCard(...)` which populates the form fields for user review and lets the user click "Save Changes" (`btnSave`) to register/reflect updates.
-- **`strings.xml`**: Added string resources for rescan action and confirmation dialog messages.
+- **`menu_main.xml`**: Added overflow menu item `action_batch_reparse` ("Auto-Audit & Re-parse Cards" / "登録データの自動診断・一括再解析").
+- **`MainActivity.kt`**:
+  - Implemented `showBatchReparseDialog()` to present option selection (Low Accuracy Only vs All Cards).
+  - Implemented `performBatchReparse(lowAccuracyOnly)` displaying a modal progress dialog during execution (`再解析中... %1$d / %2$d 件`).
+  - Displays summary Toast upon completion with total updated card count.
+- **`strings.xml`**: Added string resources for menu actions, selection options, progress messages, and completion toasts.
 
 ### Documentation
-- **`AGENTS.md`**: Updated documentation to include the rescan feature from stored card images and Database Version 6.
+- **`AGENTS.md`**: Updated documentation to include the batch audit and re-parsing feature.
 
 ## Verification Results
 
 ### Automated Tests
-- Ran `./gradlew :app:testDebugUnitTest`: **216 tests passed successfully, 0 failed.**
+- Ran `./gradlew :app:testDebugUnitTest`: **217 tests passed successfully, 0 failed.**
 - Ran `./gradlew :app:assembleDebug`: **Build finished successfully.**

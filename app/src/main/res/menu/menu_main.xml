@@ -39,6 +39,10 @@
         android:title="Restore from Backup"
         app:showAsAction="never" />
     <item
+        android:id="@+id/action_batch_reparse"
+        android:title="@string/action_batch_reparse"
+        app:showAsAction="never" />
+    <item
         android:id="@+id/action_merge_duplicates"
         android:title="Find Duplicates"
         app:showAsAction="never" />
